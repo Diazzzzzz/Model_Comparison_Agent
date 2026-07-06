@@ -25,7 +25,7 @@ def generate_scene(prompt_en: str, timeout: int = 90) -> dict:
     payload = {
         "model": Config.ARK_IMAGE_MODEL,
         "prompt": f"{prompt_en}, cinematic, wide banner, no car, no text",
-        "size": "2560x1440",  # 火山 Seedream 要求 ≥370万像素；16:9 宽屏适合 H5 背景
+        "size": "2048x2048",  # Seedream 2K，4.19M像素，远超最小要求
         "response_format": "url",
     }
     try:
