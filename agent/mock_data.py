@@ -59,10 +59,20 @@ def build_mock_result(customer, our_car, rival_car):
         "talk_track": talk,
         "h5": {
             "scene_title": f"为{care}而来 · {our_car['name']}",
-            "scene_prompt": "outdoor lifestyle background matching a family SUV, warm light",
+            "scene_prompt": _scene_prompt(our_car),
             "hotspots": hotspots,
         },
     }
+
+
+def _scene_prompt(our_car):
+    """按车型给一个具体、出片的场景（越野车走户外硬核，家用车走风景公路）。"""
+    level = our_car.get("level", "")
+    if "越野" in level:
+        return ("a rugged off-road gravel mountain trail at golden hour, "
+                "dramatic cliffs and pine forest, adventurous outdoor mood")
+    return ("an open scenic coastal highway winding through green mountains at sunset, "
+            "warm cinematic light, clean empty road")
 
 
 def _mock_comment(key, customer):
