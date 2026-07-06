@@ -22,23 +22,30 @@ def index():
     # 支持两种预填：加载示例客户 / 从对话上下文提取
     customer = customer_tags.blank_customer()
     note = ""
+    dialogue = None  # 现场对话气泡（选了对话上下文时展示）
     cid = request.args.get("customer_id")
     ctx_id = request.args.get("ctx_id")
     if cid:
         preset = customer_tags.get_customer(cid)
         if preset:
             customer = preset
-            note = f"已载入示例客户：{preset['name']}"
+            note = f"已载入示例客户：{preset['name']}（含意向车型/竞品）"
     elif ctx_id:
         ctx = mock_contexts.get_context(ctx_id)
         if ctx:
-            customer = comparison.extract_tags_from_context(ctx["transcript"])
+            # 演示模式直接用对话自带的标签（跟对话内容对得上）；有 key 时才真调模型提炼
+            if Config.text_mock():
+                customer = ctx.get("tags") or customer
+            else:
+                customer = comparison.extract_tags_from_context(ctx["transcript"])
+            dialogue = mock_contexts.parse_dialogue(ctx["transcript"])
             note = f"已从对话《{ctx['title']}》自动提炼客户标签，可再手动修改"
 
     return render_template(
         "index.html",
         schema=customer_tags.TAG_SCHEMA,
         customer=customer,
+        dialogue=dialogue,
         preset_customers=customer_tags.list_customers(),
         contexts=mock_contexts.list_contexts(),
         our_cars=car_library.our_cars(),

@@ -16,6 +16,21 @@
 
   {% if note %}<div class="note">✅ {{ note }}</div>{% endif %}
 
+  {% if dialogue %}
+  <div class="card dialog">
+    <h2>🎙️ 现场对话 <span class="tag">工牌录音转写（模拟）</span></h2>
+    <div class="chat">
+      {% for line in dialogue %}
+      <div class="bubble {{ 'sales' if line.who == '销售' else 'cust' }}">
+        <span class="who">{{ line.who }}</span>
+        <span class="text">{{ line.text }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    <p class="hint">↓ 下面的客户标签就是从这段对话自动提炼出来的（可手动改）。</p>
+  </div>
+  {% endif %}
+
   <div class="quickfill">
     <form method="get" action="{{ url_for('index') }}" class="inline">
       <label>快速载入示例客户</label>
@@ -55,13 +70,13 @@
       <div class="field">
         <label>我方意向车型（帮它说话）</label>
         <select name="our_car">
-          {% for c in our_cars %}<option value="{{ c.name }}">{{ c.name }}（{{ c.level }}）</option>{% endfor %}
+          {% for c in our_cars %}<option value="{{ c.name }}" {{ 'selected' if c.name == customer.get('intent_car') else '' }}>{{ c.name }}（{{ c.level }}）</option>{% endfor %}
         </select>
       </div>
       <div class="field">
         <label>客户在纠结的竞品</label>
         <select name="rival_car">
-          {% for c in rival_cars %}<option value="{{ c.name }}">{{ c.name }}（{{ c.brand }}）</option>{% endfor %}
+          {% for c in rival_cars %}<option value="{{ c.name }}" {{ 'selected' if c.name == customer.get('rival_car') else '' }}>{{ c.name }}（{{ c.brand }}）</option>{% endfor %}
         </select>
       </div>
     </div>
