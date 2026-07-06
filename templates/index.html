@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>车型对比 Agent · 销售端</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="wrap">
+  <header class="topbar">
+    <h1>🚗 车型对比 Agent</h1>
+    <span class="role">销售端</span>
+    {% if mock_mode %}<span class="badge mock">演示模式 · 未配 DeepSeek key</span>{% endif %}
+  </header>
+
+  {% if note %}<div class="note">✅ {{ note }}</div>{% endif %}
+
+  <div class="quickfill">
+    <form method="get" action="{{ url_for('index') }}" class="inline">
+      <label>快速载入示例客户</label>
+      <select name="customer_id">
+        {% for c in preset_customers %}
+        <option value="{{ c.id }}">{{ c.name }}（{{ c.intent_car }} vs {{ c.rival_car }}）</option>
+        {% endfor %}
+      </select>
+      <button class="ghost">载入</button>
+    </form>
+    <form method="get" action="{{ url_for('index') }}" class="inline">
+      <label>或 从现场对话自动提炼</label>
+      <select name="ctx_id">
+        {% for x in contexts %}
+        <option value="{{ x.id }}">{{ x.title }}</option>
+        {% endfor %}
+      </select>
+      <button class="ghost">🎙️ 提炼标签</button>
+    </form>
+  </div>
+
+  <form method="post" action="{{ url_for('generate') }}" class="card">
+    <h2>① 客户标签</h2>
+    <p class="hint">这些字段就是"顾客库统一字段"，可整体替换成你们真实标签。</p>
+    <div class="grid">
+      {% for item in schema %}
+      <div class="field">
+        <label>{{ item.label }}</label>
+        <input name="{{ item.key }}" value="{{ customer.get(item.key, '') }}"
+               placeholder="{{ item.label }}">
+      </div>
+      {% endfor %}
+    </div>
+
+    <h2>② 选择对比车型</h2>
+    <div class="grid2">
+      <div class="field">
+        <label>我方意向车型（帮它说话）</label>
+        <select name="our_car">
+          {% for c in our_cars %}<option value="{{ c.name }}">{{ c.name }}（{{ c.level }}）</option>{% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label>客户在纠结的竞品</label>
+        <select name="rival_car">
+          {% for c in rival_cars %}<option value="{{ c.name }}">{{ c.name }}（{{ c.brand }}）</option>{% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <button type="submit" class="primary">⚡ 一键生成对比 · 话术 · 客户H5</button>
+  </form>
+
+  <footer class="foot">车型库 / 客户标签均为模拟数据，可替换为真实数据源。</footer>
+</div>
+</body>
+</html>

@@ -1,0 +1,83 @@
+"""车型对比 Agent · Web 入口（Flask）。
+
+一键流程：销售填客户标签 + 选两款车 → 生成 ①对比表 ②话术 ③可点击客户H5。
+运行：  pip install -r requirements.txt  &&  python app.py
+然后浏览器打开 http://127.0.0.1:5000
+"""
+import uuid
+from flask import Flask, render_template, request, redirect, url_for, abort
+
+from config import Config
+from data import car_library, customer_tags, mock_contexts
+from agent import comparison
+
+app = Flask(__name__)
+
+# MVP：结果先存内存（重启即清空）。将来接数据库只改这里。
+RESULTS = {}
+
+
+@app.route("/")
+def index():
+    # 支持两种预填：加载示例客户 / 从对话上下文提取
+    customer = customer_tags.blank_customer()
+    note = ""
+    cid = request.args.get("customer_id")
+    ctx_id = request.args.get("ctx_id")
+    if cid:
+        preset = customer_tags.get_customer(cid)
+        if preset:
+            customer = preset
+            note = f"已载入示例客户：{preset['name']}"
+    elif ctx_id:
+        ctx = mock_contexts.get_context(ctx_id)
+        if ctx:
+            customer = comparison.extract_tags_from_context(ctx["transcript"])
+            note = f"已从对话《{ctx['title']}》自动提炼客户标签，可再手动修改"
+
+    return render_template(
+        "index.html",
+        schema=customer_tags.TAG_SCHEMA,
+        customer=customer,
+        preset_customers=customer_tags.list_customers(),
+        contexts=mock_contexts.list_contexts(),
+        our_cars=car_library.our_cars(),
+        rival_cars=car_library.rival_cars(),
+        note=note,
+        mock_mode=Config.text_mock(),
+    )
+
+
+@app.route("/generate", methods=["POST"])
+def generate():
+    customer = {item["key"]: request.form.get(item["key"], "").strip()
+                for item in customer_tags.TAG_SCHEMA}
+    our_car = request.form.get("our_car", "")
+    rival_car = request.form.get("rival_car", "")
+    if our_car == rival_car:
+        abort(400, "我方车型和竞品不能是同一款")
+    result = comparison.generate_comparison(customer, our_car, rival_car)
+    rid = uuid.uuid4().hex[:8]
+    RESULTS[rid] = result
+    return redirect(url_for("result", rid=rid))
+
+
+@app.route("/result/<rid>")
+def result(rid):
+    data = RESULTS.get(rid)
+    if not data:
+        abort(404)
+    return render_template("result.html", r=data, rid=rid)
+
+
+@app.route("/h5/<rid>")
+def h5(rid):
+    """客户侧可点击 H5（销售把这个链接/二维码发给客户）。"""
+    data = RESULTS.get(rid)
+    if not data:
+        abort(404)
+    return render_template("h5.html", r=data, rid=rid)
+
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000, debug=True)

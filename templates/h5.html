@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>{{ r.h5.scene_title }}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; }
+    .stage {
+      position: relative; min-height: 100vh; overflow: hidden;
+      display: flex; flex-direction: column; align-items: center;
+      {% if r.h5.scene_image_url %}
+      background: url('{{ r.h5.scene_image_url }}') center/cover no-repeat;
+      {% else %}
+      background: linear-gradient(160deg,#2b5876 0%,#4e4376 55%,#7b6d8d 100%);
+      {% endif %}
+    }
+    .stage::before { content:""; position:absolute; inset:0; background:linear-gradient(180deg,rgba(0,0,0,.35),rgba(0,0,0,.05) 40%,rgba(0,0,0,.45)); }
+    .h5head { position:relative; z-index:2; text-align:center; color:#fff; padding:34px 20px 10px; text-shadow:0 2px 10px rgba(0,0,0,.4); }
+    .h5head .title { font-size:26px; font-weight:800; letter-spacing:.5px; }
+    .h5head .sub { margin-top:8px; font-size:14px; opacity:.92; }
+    .h5head .car { margin-top:6px; font-size:13px; opacity:.8; }
+    .carbox { position:relative; z-index:2; width:100%; max-width:520px; margin:6px auto 0; padding:0 12px; }
+    .carbox svg { width:100%; height:auto; filter:drop-shadow(0 14px 22px rgba(0,0,0,.45)); }
+    .hot { position:absolute; z-index:3; width:30px; height:30px; border-radius:50%;
+      background:#ff4d4f; border:3px solid #fff; cursor:pointer; transform:translate(-50%,-50%);
+      box-shadow:0 0 0 rgba(255,77,79,.7); animation:pulse 1.8s infinite; }
+    .hot::after { content:"+"; color:#fff; font-size:20px; line-height:24px; display:block; text-align:center; font-weight:700; }
+    @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(255,77,79,.6)} 70%{box-shadow:0 0 0 16px rgba(255,77,79,0)} 100%{box-shadow:0 0 0 0 rgba(255,77,79,0)} }
+    .tip { position:relative; z-index:2; color:#fff; font-size:13px; opacity:.85; margin:14px 0 6px; text-shadow:0 1px 6px rgba(0,0,0,.5); }
+    .cta { position:relative; z-index:2; margin:auto 0 30px; }
+    .cta a { display:inline-block; background:#ff4d4f; color:#fff; text-decoration:none; font-weight:700;
+      padding:14px 40px; border-radius:40px; box-shadow:0 8px 20px rgba(255,77,79,.45); font-size:16px; }
+    /* 弹窗 */
+    .mask { position:fixed; inset:0; z-index:10; background:rgba(0,0,0,.5); display:none; align-items:flex-end; }
+    .mask.show { display:flex; }
+    .pop { background:#fff; width:100%; border-radius:20px 20px 0 0; padding:24px 22px 30px; animation:up .25s ease; }
+    @keyframes up { from{transform:translateY(100%)} to{transform:translateY(0)} }
+    .pop h3 { font-size:20px; color:#c0392b; margin-bottom:10px; }
+    .pop p { font-size:15px; line-height:1.7; color:#333; }
+    .pop .close { margin-top:18px; text-align:center; }
+    .pop .close button { background:#222; color:#fff; border:none; padding:11px 30px; border-radius:30px; font-size:15px; }
+  </style>
+</head>
+<body>
+<div class="stage">
+  <div class="h5head">
+    <div class="title">{{ r.h5.scene_title }}</div>
+    <div class="sub">点亮车身上的 <b style="color:#ff8a8a">红点</b>，看看它为你多想了什么</div>
+    <div class="car">{{ r.our_car.name }}</div>
+  </div>
+
+  <div class="carbox">
+    <!-- 简易 SUV 剪影（真实产品换成长城官方车图 + 同样的热区坐标）-->
+    <svg viewBox="0 0 520 230" xmlns="http://www.w3.org/2000/svg">
+      <g fill="#e8eaf0" stroke="#c7ccda" stroke-width="2">
+        <path d="M40 165 Q45 120 90 112 L150 70 Q165 58 195 56 L330 56 Q365 58 388 82 L440 112 Q485 118 486 158 L486 172 Q486 180 476 180 L52 180 Q40 180 40 168 Z"/>
+        <path d="M158 74 L300 74 L300 108 L120 108 Z" fill="#cdd6e6"/>
+        <path d="M312 74 L332 74 Q356 76 372 96 L385 108 L312 108 Z" fill="#cdd6e6"/>
+      </g>
+      <circle cx="150" cy="180" r="30" fill="#2b2f3a"/><circle cx="150" cy="180" r="13" fill="#8b93a7"/>
+      <circle cx="388" cy="180" r="30" fill="#2b2f3a"/><circle cx="388" cy="180" r="13" fill="#8b93a7"/>
+    </svg>
+    <!-- 5 个热区，坐标固定，文案由 AI 填 -->
+    {% set pos = {'front':(88,58),'wheel':(29,80),'body':(52,64),'roof':(45,34),'cabin':(60,46)} %}
+    {% for h in r.h5.hotspots %}
+      <div class="hot" style="left:{{ pos[h.part][0] }}%; top:{{ pos[h.part][1] }}%"
+           data-title="{{ h.title }}" data-sp="{{ h.selling_point }}"></div>
+    {% endfor %}
+  </div>
+
+  <div class="tip">👆 点点看红点</div>
+  <div class="cta"><a href="#" onclick="return false;">预约试驾 · 联系销售</a></div>
+</div>
+
+<div class="mask" id="mask">
+  <div class="pop">
+    <h3 id="pt"></h3>
+    <p id="ps"></p>
+    <div class="close"><button onclick="hide()">知道啦</button></div>
+  </div>
+</div>
+
+<script>
+  document.querySelectorAll('.hot').forEach(function(el){
+    el.addEventListener('click', function(){
+      document.getElementById('pt').textContent = el.dataset.title;
+      document.getElementById('ps').textContent = el.dataset.sp;
+      document.getElementById('mask').classList.add('show');
+    });
+  });
+  function hide(){ document.getElementById('mask').classList.remove('show'); }
+  document.getElementById('mask').addEventListener('click', function(e){ if(e.target===this) hide(); });
+</script>
+</body>
+</html>
