@@ -69,13 +69,13 @@
     <div class="grid2">
       <div class="field">
         <label>我方意向车型（帮它说话）</label>
-        <select name="our_car">
+        <select name="sel_our">
           {% for c in our_cars %}<option value="{{ c.name }}" {{ 'selected' if c.name == customer.get('intent_car') else '' }}>{{ c.name }}（{{ c.level }}）</option>{% endfor %}
         </select>
       </div>
       <div class="field">
         <label>客户在纠结的竞品</label>
-        <select name="rival_car">
+        <select name="sel_rival">
           {% for c in rival_cars %}<option value="{{ c.name }}" {{ 'selected' if c.name == customer.get('rival_car') else '' }}>{{ c.name }}（{{ c.brand }}）</option>{% endfor %}
         </select>
       </div>

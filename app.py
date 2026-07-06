@@ -59,8 +59,11 @@ def index():
 def generate():
     customer = {item["key"]: request.form.get(item["key"], "").strip()
                 for item in customer_tags.TAG_SCHEMA}
-    our_car = request.form.get("our_car", "")
-    rival_car = request.form.get("rival_car", "")
+    # 选车用独立字段名 sel_our / sel_rival，避免与客户标签里的 rival_car 文本框重名
+    our_car = request.form.get("sel_our", "")
+    rival_car = request.form.get("sel_rival", "")
+    if not car_library.get_car(our_car) or not car_library.get_car(rival_car):
+        abort(400, "请从下拉框里选择有效的车型（我方 + 竞品）")
     if our_car == rival_car:
         abort(400, "我方车型和竞品不能是同一款")
     result = comparison.generate_comparison(customer, our_car, rival_car)
