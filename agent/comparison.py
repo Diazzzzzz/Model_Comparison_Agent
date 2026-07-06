@@ -32,10 +32,10 @@ def generate_comparison(customer: dict, our_car_name: str, rival_car_name: str) 
         result["_mode"] = f"DeepSeek 生成({Config.DEEPSEEK_MODEL})"
 
     result = _normalize(result)
-    # H5 场景背景图（有火山 key 才真生成，否则 None → 前端用 SVG 兜底）
-    result["h5"]["scene_image_url"] = image_client.generate_scene(
-        result["h5"].get("scene_prompt", "")
-    )
+    # H5 场景背景图（有火山 key 才真生成，否则 None → 前端用渐变兜底）
+    img = image_client.generate_scene(result["h5"].get("scene_prompt", ""))
+    result["h5"]["scene_image_url"] = img["url"]
+    result["h5"]["image_status"] = img  # {url, status, detail}，用于界面显示火山成没成功
     result["our_car"] = our_car
     result["rival_car"] = rival_car
     result["customer"] = customer

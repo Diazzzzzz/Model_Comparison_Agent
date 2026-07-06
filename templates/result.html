@@ -32,11 +32,11 @@
       </thead>
       <tbody>
       {% for d in r.dimensions %}
-        <tr class="{{ 'win' if d.winner == 'ours' else '' }}">
+        <tr class="{{ 'win' if d.winner == 'ours' else ('weak' if d.winner == 'rival' else '') }}">
           <td class="dim">{{ d.name }}</td>
           <td class="ours">{{ d.our_value }}{% if d.winner == 'ours' %} <span class="chip">✓ 占优</span>{% endif %}</td>
-          <td>{{ d.rival_value }}</td>
-          <td class="cmt">{{ d.comment }}</td>
+          <td>{{ d.rival_value }}{% if d.winner == 'rival' %} <span class="chip amber">对手更强</span>{% endif %}</td>
+          <td class="cmt">{% if d.winner == 'rival' %}<b class="fb">💬 找补</b> {% endif %}{{ d.comment }}</td>
         </tr>
       {% endfor %}
       </tbody>
@@ -52,6 +52,16 @@
     <h2>③ 客户 H5 <span class="tag">发给客户</span></h2>
     <p>一张可点击的场景化 H5，把上面的卖点变成客户能上手玩的样子。</p>
     <a class="primary" href="{{ url_for('h5', rid=rid) }}" target="_blank">🔗 打开客户 H5（新窗口）</a>
+    {% set st = r.h5.image_status %}
+    <p class="imgstat
+        {{ 'ok' if st.status=='ok' else ('warn' if st.status in ['no_key','forced_mock'] else 'err') }}">
+      H5 背景图：
+      {% if st.status == 'ok' %}✅ 火山 AI 生成成功
+      {% elif st.status == 'no_key' %}⚠️ 未配火山 key，用内置渐变背景（属正常）
+      {% elif st.status == 'forced_mock' %}⚠️ 已强制关闭图像生成（FORCE_MOCK=1）
+      {% else %}❌ 火山调用失败 —— {{ st.detail }}
+      {% endif %}
+    </p>
     <p class="hint">真实产品里：这里会生成一个链接 + 二维码，销售直接发客户微信/WhatsApp。</p>
   </div>
 </div>

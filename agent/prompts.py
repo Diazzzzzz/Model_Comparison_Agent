@@ -46,6 +46,9 @@ def build_user_prompt(customer: dict, our_car: dict, rival_car: dict) -> str:
         "\n\n【我方车型】\n" + json.dumps(our_car, ensure_ascii=False, indent=2) +
         "\n\n【竞品车型】\n" + json.dumps(rival_car, ensure_ascii=False, indent=2) +
         "\n\n请给出对比。dimensions 至少覆盖 6 个维度，务必包含『月供/用车成本』和『安全』。"
+        "为了让销售可信、有准备，dimensions 里必须包含 1~2 个我方处于劣势的诚实项（winner 设为 rival）。"
+        "对每个 winner=rival 的项，comment 必须写成给销售的『找补话术』：先承认差距，再化解"
+        "（弱化影响 / 转移到我方强项 / 给客户一个不吃亏的理由），紧扣这位客户的顾虑。"
         "h5.hotspots 必须给满 5 个，每个 part 用且仅用一次，顺序对应：" + parts_desc +
         "。\n严格按以下 JSON 结构返回（只返回 JSON）：\n" +
         json.dumps(schema, ensure_ascii=False, indent=2)

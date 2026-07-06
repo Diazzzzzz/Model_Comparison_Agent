@@ -38,6 +38,19 @@ def build_mock_result(customer, our_car, rival_car):
                 f"{our_car['name']}给的是{our_specs.get('质保','长质保')}，用料上{our_specs.get('车身用钢','高强度车身')}，这些都是白纸黑字写进合同的。"
     talk += "我建议您今天就试驾感受一下，很多客户一开就有数了。"
 
+    # 演示：加一条我方劣势项，展示"找补"能力——销售既要知道弱点，也要知道怎么化解
+    dimensions.append({
+        "name": "品牌 / 保值率",
+        "our_value": "国产品牌，保值率近年快速提升",
+        "rival_value": f"{rival_car['brand']}合资品牌，二手保值率偏高",
+        "winner": "rival",
+        "comment": (
+            f"【找补】客户就担心这个（{worry or '保值/品牌'}）。这么说："
+            f"合资保值确实略高，但这两年差距明显在缩小；而且我们省下的差价 + 更长质保，"
+            f"几年下来实际持有成本更低，真不吃亏。"
+        ),
+    })
+
     hotspots = _mock_hotspots(our_car)
 
     return {

@@ -1,16 +1,22 @@
 """火山方舟 豆包·文生图 Seedream 客户端（生成 H5 场景背景图）。
 
-可选：没配 ARK_API_KEY 时，generate_scene() 返回 None，
-H5 会自动用内置的 SVG 场景背景兜底（不是灰占位，是带氛围的矢量背景）。
+generate_scene() 返回一个 dict：{url, status, detail}
+  status: ok / no_key / forced_mock / error
+这样上层能把"火山到底成没成功、为啥失败"显示给用户看，而不是静默兜底。
 """
 import requests
 from config import Config
 
 
-def generate_scene(prompt_en: str, timeout: int = 90):
-    """按英文提示词生成一张场景背景图，返回图片 URL；失败或没 key 返回 None。"""
-    if not Config.image_enabled():
-        return None
+def generate_scene(prompt_en: str, timeout: int = 90) -> dict:
+    """按英文提示词生成场景背景图。返回 {url, status, detail}。"""
+    if not Config.ARK_API_KEY:
+        return _log({"url": None, "status": "no_key",
+                     "detail": "未配置火山 ARK_API_KEY，H5 用内置渐变背景"})
+    if Config.FORCE_MOCK:
+        return _log({"url": None, "status": "forced_mock",
+                     "detail": "FORCE_MOCK=1 已强制关闭真实图像生成"})
+
     url = f"{Config.ARK_BASE_URL}/images/generations"
     headers = {
         "Authorization": f"Bearer {Config.ARK_API_KEY}",
@@ -25,7 +31,16 @@ def generate_scene(prompt_en: str, timeout: int = 90):
     try:
         resp = requests.post(url, headers=headers, json=payload, timeout=timeout)
         if resp.status_code != 200:
-            return None
-        return resp.json()["data"][0]["url"]
-    except Exception:
-        return None
+            return _log({"url": None, "status": "error",
+                         "detail": f"火山返回 HTTP {resp.status_code}：{resp.text[:200]}"})
+        img_url = resp.json()["data"][0]["url"]
+        return _log({"url": img_url, "status": "ok",
+                     "detail": f"火山生成成功（模型 {Config.ARK_IMAGE_MODEL}）"})
+    except Exception as e:
+        return _log({"url": None, "status": "error", "detail": f"火山调用异常：{e}"})
+
+
+def _log(result: dict) -> dict:
+    """同时打印到终端，方便本地排查。"""
+    print(f"[火山图像] status={result['status']} | {result['detail']}")
+    return result

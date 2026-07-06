@@ -38,6 +38,13 @@ table.cmp tr.win td.ours{background:#fdf0ee;font-weight:600}
 .dim{font-weight:600;white-space:nowrap}
 .cmt{color:var(--muted);font-size:13px}
 .chip{background:var(--ours);color:#fff;font-size:11px;padding:1px 7px;border-radius:20px;margin-left:4px;white-space:nowrap}
+.chip.amber{background:#e08a00}
+table.cmp tr.weak td.cmt{background:#fff8ec}
+.fb{color:#c77700;font-size:12px;background:#fff2d9;padding:1px 6px;border-radius:6px;margin-right:4px}
+.imgstat{font-size:13px;margin:10px 0 4px;padding:8px 12px;border-radius:9px}
+.imgstat.ok{background:#eef7ee;color:#2e6b30}
+.imgstat.warn{background:#fff4e5;color:#b26a00}
+.imgstat.err{background:#fdeceb;color:#c0392b}
 .talk{background:#fbfaf6;border:1px dashed #e3d9b8;border-radius:12px;padding:16px 18px;font-size:15px;line-height:1.8}
 /* 现场对话气泡 */
 .dialog .chat{display:flex;flex-direction:column;gap:10px;margin:6px 0 12px}
