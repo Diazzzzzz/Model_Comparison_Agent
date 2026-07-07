@@ -13,14 +13,14 @@
     {% if mock_mode %}<span class="badge mock">演示模式</span>{% endif %}
   </header>
 
-  <form method="post" action="{{ url_for('generate') }}" class="card hero">
+  <form method="post" action="{{ url_for('generate') }}" class="card hero" autocomplete="off">
     <h2 class="hero-t">帮客户在两款车之间做选择</h2>
     <p class="hero-s">选好车型，一键生成对比、话术和可发给客户的 H5。</p>
 
     <div class="pickgrid">
       <div class="pick-col ours">
         <label>我方意向车型</label>
-        <select name="sel_our">
+        <select name="sel_our" autocomplete="off">
           {% for c in our_cars %}<option value="{{ c.name }}" {{ 'selected' if c.name == customer.get('intent_car') else '' }}>{{ c.name }}</option>{% endfor %}
         </select>
         <span class="pick-tag">主推</span>
@@ -28,7 +28,7 @@
       <div class="vs-badge">VS</div>
       <div class="pick-col">
         <label>客户在纠结的竞品</label>
-        <select name="sel_rival">
+        <select name="sel_rival" autocomplete="off">
           {% for c in rival_cars %}<option value="{{ c.name }}" {{ 'selected' if c.name == customer.get('rival_car') else '' }}>{{ c.name }}（{{ c.brand }}）</option>{% endfor %}
         </select>
         <span class="pick-tag rival">竞品</span>
