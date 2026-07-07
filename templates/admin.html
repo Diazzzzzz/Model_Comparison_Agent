@@ -269,6 +269,10 @@
 
   document.getElementById('car').addEventListener('change', function(){ loadCar(this.value); });
   document.getElementById('addRow').addEventListener('click', ()=>addRow());
+  document.getElementById('reset').addEventListener('click', function(){
+    stage.querySelectorAll('.mk').forEach(m=>m.remove());   // 清掉画布上的红点
+    idx=0; hotspots={}; stepUI();                            // 重置进度，可重新点 5 个
+  });
   document.getElementById('batch').addEventListener('change', async function(){
     const files=[...this.files]; this.value=''; let n=0;
     for(const f of files){ n++; batchProg.textContent='正在抠图 '+n+'/'+files.length+'…'; const row=addRow(); await cutoutInto(row, f); }
