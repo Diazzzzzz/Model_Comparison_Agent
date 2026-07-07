@@ -22,6 +22,22 @@ CARS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "c
 RESULTS = {}
 
 
+def _match_car(name, cars):
+    """把（可能不精确的）车名匹配到车库里的正式名。匹配不到返回原值。"""
+    name = (name or "").strip()
+    names = [c["name"] for c in cars]
+    if name in names:
+        return name
+    for n in names:                       # 互相包含：坦克300 ↔ 长城坦克300
+        if n and (n in name or name in n):
+            return n
+    for n in names:                       # 去掉品牌词再比：H6 / 途观 等核心词命中
+        core = n.replace("长城", "").replace("大众", "").replace("丰田", "")
+        if core and core in name:
+            return n
+    return name
+
+
 @app.route("/")
 def index():
     # 支持两种预填：加载示例客户 / 从对话上下文提取
@@ -45,6 +61,11 @@ def index():
                 customer = comparison.extract_tags_from_context(ctx["transcript"])
             dialogue = mock_contexts.parse_dialogue(ctx["transcript"])
             note = f"已从对话《{ctx['title']}》自动提炼客户标签，可再手动修改"
+
+    # 把车名规范化到车库正式名（模型可能抽出"坦克300"，下拉框是"长城坦克300"）
+    customer = dict(customer)
+    customer["intent_car"] = _match_car(customer.get("intent_car"), car_library.our_cars())
+    customer["rival_car"] = _match_car(customer.get("rival_car"), car_library.rival_cars())
 
     return render_template(
         "index.html",
