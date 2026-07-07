@@ -119,7 +119,8 @@
         '<input type="color" name="color_hex_'+i+'" value="#cccccc" class="chex" title="主色">'+
         '<label class="twolab"><input type="checkbox" class="twotone"> 拼色</label>'+
         '<input type="color" name="color_hex2_'+i+'" value="#888888" class="chex2" title="第二色" style="display:none" disabled>'+
-        '<input type="file" name="color_img_'+i+'" accept="image/*" class="cfile">'+
+        '<button type="button" class="pick ghost">选图</button>'+
+        '<input type="file" name="color_img_'+i+'" accept="image/*" class="cfile" style="display:none">'+
         '<input type="hidden" name="color_keep_'+i+'" value="">'+
       '</div>'+
       '<button type="button" class="del ghost">删除</button>';
@@ -127,8 +128,9 @@
     const thumb=row.querySelector('.cthumb'), file=row.querySelector('.cfile'),
           keep=row.querySelector('input[type=hidden]'), hex=row.querySelector('.chex'),
           hex2=row.querySelector('.chex2'), two=row.querySelector('.twotone'),
-          name=row.querySelector('.cname');
-    function useSrc(src){ thumb.src=src; thumb.style.display=''; sampleColor(src,'center',h=>{ if(h) hex.value=h; }); refreshAnno(); }
+          name=row.querySelector('.cname'), pick=row.querySelector('.pick');
+    pick.addEventListener('click', ()=>file.click());
+    function useSrc(src){ thumb.src=src; thumb.style.display=''; pick.textContent='换图'; sampleColor(src,'center',h=>{ if(h) hex.value=h; }); refreshAnno(); }
     if(prefill){
       name.value=prefill.name||''; if(prefill.hex) hex.value=prefill.hex;
       if(prefill.keep){ keep.value=prefill.keep; useSrc(prefill.keep); }
