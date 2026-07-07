@@ -88,19 +88,32 @@
   const saveBtn = document.getElementById('save');
   let ridx = 0, annoImg = null, idx = 0, hotspots = {};
 
-  // ---- 从图里取主色（同源图/blob 可用 canvas 采样）----
+  // ---- 从图里取主色：车身中段带内取"出现最多的颜色"(众数)，不是求平均 ----
   function sampleColor(src, region, cb){
     const im = new Image();
     im.onload = function(){
       try{
-        const cv=document.createElement('canvas'); cv.width=64; cv.height=48;
-        const cx=cv.getContext('2d'); cx.drawImage(im,0,0,64,48);
-        const y0 = region==='top'?4:22, y1 = region==='top'?16:38;
-        const d=cx.getImageData(18,y0,28,y1-y0).data;
-        let r=0,g=0,b=0,n=0;
-        for(let i=0;i<d.length;i+=4){ if(d[i+3]>128){ r+=d[i];g+=d[i+1];b+=d[i+2];n++; } }
-        if(!n){ cb(null); return; }
-        const h='#'+[r,g,b].map(v=>Math.round(v/n).toString(16).padStart(2,'0')).join('');
+        const W=120, H=Math.max(2, Math.round(120*im.height/im.width));
+        const cv=document.createElement('canvas'); cv.width=W; cv.height=H;
+        const cx=cv.getContext('2d'); cx.drawImage(im,0,0,W,H);
+        // region=center 取车身中段带；top 取车顶带（拼色第二色）
+        const yT=Math.round(H*(region==='top'?0.10:0.42)), yB=Math.round(H*(region==='top'?0.30:0.70));
+        const xL=Math.round(W*0.26), xR=Math.round(W*0.74);
+        const d=cx.getImageData(xL,yT,xR-xL,Math.max(1,yB-yT)).data;
+        const buckets={}, sum={};
+        for(let i=0;i<d.length;i+=4){
+          if(d[i+3]<128) continue;                 // 跳过透明
+          const r=d[i],g=d[i+1],b=d[i+2];
+          const key=(r>>5)+'-'+(g>>5)+'-'+(b>>5);  // 量化成 8×8×8 桶
+          buckets[key]=(buckets[key]||0)+1;
+          if(!sum[key]) sum[key]=[0,0,0,0];
+          sum[key][0]+=r; sum[key][1]+=g; sum[key][2]+=b; sum[key][3]++;
+        }
+        let best=null,bn=0;
+        for(const k in buckets){ if(buckets[k]>bn){ bn=buckets[k]; best=k; } }
+        if(!best){ cb(null); return; }
+        const s=sum[best];                          // 用众数桶里像素的真实均值，更准
+        const h='#'+[s[0]/s[3],s[1]/s[3],s[2]/s[3]].map(v=>Math.round(v).toString(16).padStart(2,'0')).join('');
         cb(h);
       }catch(e){ cb(null); }
     };
