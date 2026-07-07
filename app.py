@@ -120,11 +120,6 @@ def _save_bytes(raw, ext=".png"):
     return f"/static/cars/{fname}"
 
 
-def _disk_path(web_path):
-    """/static/cars/xxx → 磁盘绝对路径（限制在 CARS_DIR 内）。"""
-    name = os.path.basename(web_path or "")
-    p = os.path.join(CARS_DIR, name)
-    return p if os.path.isfile(p) else None
 
 
 def _save_upload(file, cutout=True):
@@ -142,51 +137,16 @@ def _save_upload(file, cutout=True):
 
 @app.route("/admin/cutout", methods=["POST"])
 def admin_cutout():
-    """选图时即时抠图：存原图 + 自动抠图，返回两者路径（原图供智能抠图编辑器用）。"""
+    """选图时即时抠图：收一张图 → 抠图存好 → 返回可访问路径。"""
     f = request.files.get("image")
     if not f or not f.filename:
         abort(400, "没有图片")
-    ext = os.path.splitext(f.filename)[1].lower() or ".png"
-    if ext not in (".png", ".jpg", ".jpeg", ".webp"):
-        abort(400, "图片格式仅支持 png/jpg/webp")
-    raw = f.read()
-    orig = _save_bytes(raw, ext)
     cutout = request.form.get("cutout", "on") == "on"
-    if cutout:
-        out, ok = bg_remove.remove_bg(raw)
-        path = _save_bytes(out, ".png") if ok else orig
-    else:
-        path = orig
-    return {"path": path, "orig": orig}
+    return {"path": _save_upload(f, cutout)}
 
 
-@app.route("/admin/segment", methods=["POST"])
-def admin_segment():
-    """智能抠图（SAM 点选）：原图 + 点 → 抠出点中的物体，返回透明 PNG 路径。"""
-    orig = _disk_path(request.form.get("orig", ""))
-    if not orig:
-        abort(400, "原图不存在")
-    try:
-        points = json.loads(request.form.get("points", "[]"))
-    except json.JSONDecodeError:
-        abort(400, "点坐标格式错误")
-    if not points:
-        abort(400, "至少点一个点")
-    with open(orig, "rb") as fp:
-        data = fp.read()
-    out, ok = bg_remove.segment_points(data, points)
-    if not ok:
-        abort(500, "智能抠图失败，请看终端日志")
-    return {"path": _save_bytes(out, ".png")}
 
 
-@app.route("/admin/save_image", methods=["POST"])
-def admin_save_image():
-    """保存编辑器导出的最终透明 PNG（不再抠图）。"""
-    f = request.files.get("image")
-    if not f or not f.filename:
-        abort(400, "没有图片")
-    return {"path": _save_bytes(f.read(), ".png")}
 
 
 @app.route("/admin/save", methods=["POST"])

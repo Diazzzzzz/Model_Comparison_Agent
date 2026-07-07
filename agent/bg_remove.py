@@ -43,36 +43,6 @@ def _maybe_downscale(data: bytes, max_side: int = 1400) -> bytes:
         return data
 
 
-_sam_session = None
-
-
-def _get_sam_session():
-    global _sam_session
-    if _sam_session is None:
-        from rembg import new_session
-        _sam_session = new_session("sam")
-    return _sam_session
-
-
-def segment_points(data: bytes, norm_points) -> tuple:
-    """智能抠图（SAM 点提示）。
-    norm_points: [[fx, fy, label], ...]，fx/fy 为 0~1 的相对坐标，label 1=保留 0=排除。
-    返回 (透明 PNG 字节, 是否成功)。"""
-    try:
-        import io
-        import numpy as np
-        from rembg import remove
-        from PIL import Image
-        data = _maybe_downscale(data)
-        w, h = Image.open(io.BytesIO(data)).size
-        pts = np.array([[float(p[0]) * w, float(p[1]) * h] for p in norm_points])
-        lbls = np.array([int(p[2]) for p in norm_points])
-        out = remove(data, session=_get_sam_session(), input_points=pts, input_labels=lbls)
-        return out, True
-    except Exception as e:
-        print(f"[SAM智能抠图] 失败：{e}")
-        return data, False
-
 
 def remove_bg(data: bytes) -> tuple:
     """输入图片字节 → 返回 (处理后字节, 是否成功抠图)。成功时是透明 PNG。"""

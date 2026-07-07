@@ -28,17 +28,6 @@
     .toolrow{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin:10px 0 4px}
     .assets{width:100%;border-collapse:collapse;font-size:14px;margin-top:8px}
     .assets th,.assets td{border-bottom:1px solid #e6e8ef;padding:8px 10px;text-align:left}
-    /* 智能抠图编辑器 */
-    .emask{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;padding:16px}
-    .emask.show{display:flex}
-    .ebox{background:#fff;border-radius:14px;max-width:960px;width:100%;max-height:92vh;overflow:auto;padding:18px}
-    .ehead{font-size:17px;font-weight:700;margin-bottom:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-    .etoolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
-    .etool.on{background:var(--brand,#c0392b);color:#fff;border-color:var(--brand,#c0392b)}
-    .ecanvaswrap{position:relative;display:inline-block;max-width:100%;background:repeating-conic-gradient(#eee 0 25%,#fff 0 50%) 0/22px 22px;border-radius:8px}
-    .ecanvaswrap canvas{max-width:100%;height:auto;display:block}
-    #eov{position:absolute;left:0;top:0}
-    .efoot{display:flex;gap:10px;margin-top:12px}
   </style>
 </head>
 <body>
@@ -93,27 +82,6 @@
       {% for name, a in assets.items() %}<tr><td>{{ name }}</td><td>{{ a.colors|length }}</td><td>{{ a.hotspots|length }}/5</td></tr>{% endfor %}
     </table>
     {% else %}<p class="hint">暂无已标注车型。</p>{% endif %}
-  </div>
-</div>
-
-<div class="emask" id="editor">
-  <div class="ebox">
-    <div class="ehead">✂️ 智能抠图 <span id="etip" class="hint" style="margin:0"></span></div>
-    <div class="etoolbar">
-      <button type="button" class="etool ghost" data-m="add">➕ 点保留</button>
-      <button type="button" class="etool ghost" data-m="sub">➖ 点排除</button>
-      <button type="button" class="etool ghost" data-m="erase">橡皮擦</button>
-      <button type="button" class="etool ghost" data-m="restore">恢复笔</button>
-      <label class="hint" style="margin:0">笔刷 <input type="range" id="ebrush" min="6" max="90" value="26" style="vertical-align:middle;width:90px"></label>
-      <button type="button" class="ghost" id="eundo">撤销点</button>
-      <button type="button" class="ghost" id="eclear">清空重来</button>
-    </div>
-    <div class="ecanvaswrap"><canvas id="ec"></canvas><canvas id="eov"></canvas></div>
-    <p class="hint" style="margin:8px 0 0">点车身=保留、点背景=排除；抠好后可用橡皮/恢复笔精修。</p>
-    <div class="efoot">
-      <button type="button" class="ghost" id="ecancel" style="flex:1">取消</button>
-      <button type="button" class="primary" id="eapply" style="margin:0;flex:2">应用到这个颜色</button>
-    </div>
   </div>
 </div>
 
@@ -189,7 +157,7 @@
     pick.disabled=true; pick.innerHTML='<span class="spin"></span>抠图中';
     const fd=new FormData(); fd.append('image',f); fd.append('cutout', cutoutOn()?'on':'off');
     return fetch('/admin/cutout',{method:'POST',body:fd}).then(r=>r.ok?r.json():Promise.reject())
-      .then(d=>{ pick.disabled=false; keep.value=d.path; if(d.orig) row.querySelector('.corig').value=d.orig; file.value=''; applyImage(row,d.path); })
+      .then(d=>{ pick.disabled=false; keep.value=d.path; file.value=''; applyImage(row,d.path); })
       .catch(()=>{ pick.disabled=false; keep.value=''; applyImage(row, URL.createObjectURL(f)); });
   }
 
@@ -205,10 +173,8 @@
         '<label class="twolab"><input type="checkbox" class="twotone"> 拼色</label>'+
         '<input type="color" name="color_hex2_'+i+'" value="#888888" class="chex2" title="第二色" style="display:none" disabled>'+
         '<button type="button" class="pick ghost">选择图片</button>'+
-        '<button type="button" class="smart ghost">✂️ 智能抠图</button>'+
         '<input type="file" name="color_img_'+i+'" accept="image/*" class="cfile" style="display:none">'+
         '<input type="hidden" name="color_keep_'+i+'" value="">'+
-        '<input type="hidden" class="corig" value="">'+
       '</div>'+
       '<button type="button" class="del ghost">删除</button>';
     rowsBox.appendChild(row);
@@ -222,10 +188,6 @@
     }
     pick.addEventListener('click', ()=>file.click());
     file.addEventListener('change', function(){ if(this.files[0]) cutoutInto(row, this.files[0]); });
-    row.querySelector('.smart').addEventListener('click', function(){
-      const o=row.querySelector('.corig').value || keep.value;
-      if(o) openEditor(row, o); else alert('请先选择一张图片');
-    });
     two.addEventListener('change', function(){
       hex2.disabled=!this.checked; hex2.style.display=this.checked?'':'none';
       const t=row.querySelector('.cthumb'); if(this.checked && t.src) sampleColor(t.src,'top',h=>{ if(h) hex2.value=h; });
@@ -287,61 +249,6 @@
   });
   window.addEventListener('load', ()=>loadCar(document.getElementById('car').value));
 
-  // ===== 智能抠图编辑器（SAM 点选 + 橡皮/恢复精修）=====
-  const eMask=document.getElementById('editor'), ec=document.getElementById('ec'), eov=document.getElementById('eov');
-  const ectx=ec.getContext('2d'), eoctx=eov.getContext('2d');
-  const oc=document.createElement('canvas'), occtx=oc.getContext('2d');
-  const etip=document.getElementById('etip');
-  let ed={row:null, orig:'', points:[], mode:'add', brush:26};
-
-  function openEditor(row, origPath){
-    ed.row=row; ed.orig=origPath; ed.points=[];
-    const im=new Image();
-    im.onload=function(){
-      let W=im.naturalWidth, H=im.naturalHeight; if(W>900){ H=Math.round(H*900/W); W=900; }
-      ec.width=eov.width=oc.width=W; ec.height=eov.height=oc.height=H;
-      occtx.clearRect(0,0,W,H); occtx.drawImage(im,0,0,W,H);
-      ectx.clearRect(0,0,W,H); ectx.drawImage(im,0,0,W,H);
-      eoctx.clearRect(0,0,W,H);
-      eMask.classList.add('show'); setMode('add'); etip.textContent='点车身=保留，点背景=排除';
-    };
-    im.crossOrigin='anonymous'; im.src=origPath;
-  }
-  function closeEditor(){ eMask.classList.remove('show'); ed.row=null; }
-  function setMode(m){ ed.mode=m; document.querySelectorAll('.etool').forEach(b=>b.classList.toggle('on', b.dataset.m===m)); eov.style.cursor=(m==='add'||m==='sub')?'crosshair':'cell'; }
-  function drawPoints(){ eoctx.clearRect(0,0,eov.width,eov.height); ed.points.forEach(p=>{ eoctx.beginPath(); eoctx.arc(p[0]*eov.width,p[1]*eov.height,6,0,7); eoctx.fillStyle=p[2]?'#2ec16b':'#ff4d4f'; eoctx.strokeStyle='#fff'; eoctx.lineWidth=2; eoctx.fill(); eoctx.stroke(); }); }
-  function drawOrig(){ ectx.clearRect(0,0,ec.width,ec.height); ectx.drawImage(oc,0,0); }
-  function segment(){
-    if(!ed.points.length){ drawOrig(); return; }
-    etip.textContent='智能抠图中…';
-    const fd=new FormData(); fd.append('orig',ed.orig); fd.append('points',JSON.stringify(ed.points));
-    fetch('/admin/segment',{method:'POST',body:fd}).then(r=>r.ok?r.json():Promise.reject())
-      .then(d=>{ const im=new Image(); im.onload=function(){ ectx.clearRect(0,0,ec.width,ec.height); ectx.drawImage(im,0,0,ec.width,ec.height); etip.textContent='可继续点，或用橡皮/恢复笔精修'; }; im.src=d.path; })
-      .catch(()=>{ etip.textContent='智能抠图失败，看终端日志'; });
-  }
-  function xy(e){ const r=eov.getBoundingClientRect(); return [(e.clientX-r.left)/r.width, (e.clientY-r.top)/r.height]; }
-  function brushAt(fx,fy){ const x=fx*ec.width, y=fy*ec.height, r=ed.brush;
-    if(ed.mode==='erase'){ ectx.save(); ectx.globalCompositeOperation='destination-out'; ectx.beginPath(); ectx.arc(x,y,r,0,7); ectx.fill(); ectx.restore(); }
-    else if(ed.mode==='restore'){ ectx.save(); ectx.beginPath(); ectx.arc(x,y,r,0,7); ectx.clip(); ectx.drawImage(oc,0,0); ectx.restore(); } }
-  let drawing=false;
-  eov.addEventListener('mousedown', e=>{ const [fx,fy]=xy(e);
-    if(ed.mode==='add'||ed.mode==='sub'){ ed.points.push([fx,fy, ed.mode==='add'?1:0]); drawPoints(); segment(); }
-    else { drawing=true; brushAt(fx,fy); } });
-  eov.addEventListener('mousemove', e=>{ if(drawing){ const [fx,fy]=xy(e); brushAt(fx,fy); } });
-  window.addEventListener('mouseup', ()=>drawing=false);
-  eov.addEventListener('contextmenu', e=>{ e.preventDefault(); const [fx,fy]=xy(e); ed.points.push([fx,fy,0]); drawPoints(); segment(); });
-
-  document.querySelectorAll('.etool').forEach(b=>b.addEventListener('click', ()=>setMode(b.dataset.m)));
-  document.getElementById('ebrush').addEventListener('input', function(){ ed.brush=+this.value; });
-  document.getElementById('eundo').addEventListener('click', ()=>{ ed.points.pop(); drawPoints(); segment(); });
-  document.getElementById('eclear').addEventListener('click', ()=>{ ed.points=[]; drawPoints(); drawOrig(); etip.textContent='已重置'; });
-  document.getElementById('ecancel').addEventListener('click', closeEditor);
-  document.getElementById('eapply').addEventListener('click', ()=>{
-    ec.toBlob(function(blob){ const fd=new FormData(); fd.append('image', blob, 'edited.png');
-      fetch('/admin/save_image',{method:'POST',body:fd}).then(r=>r.json()).then(d=>{
-        const row=ed.row; row.querySelector('input[type=hidden]').value=d.path; applyImage(row,d.path); closeEditor();
-      }); }, 'image/png');
-  });
 </script>
 </body>
 </html>
