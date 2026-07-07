@@ -34,48 +34,49 @@
     <span class="role">内部工具</span>
     <a class="ghost" href="{{ url_for('index') }}">← 回销售端</a>
   </header>
-  <div class="note">给一辆车传<b>多个颜色</b>的官方图（同角度）→ 在任一张图上点 5 下标热区（<b>所有颜色通用，标一次</b>）→ 保存。客户 H5 就能换色 + 用你标的红点。</div>
+  <div class="note">为车型上传多种颜色的官方图片（建议同一拍摄角度），并在任意一张图上标注热区（所有颜色共用一套）。保存后，客户端 H5 支持切换车身颜色并展示热区卖点。</div>
 
   <form class="card" method="post" action="{{ url_for('admin_save') }}" enctype="multipart/form-data" id="f">
     <div class="field" style="margin-bottom:14px">
       <label>车型</label>
       <select name="car" id="car">
-        {% for c in cars %}<option value="{{ c.name }}">{{ c.name }}（{{ c.level }}）{{ '｜已标注' if c.name in assets else '' }}</option>{% endfor %}
+        {% for c in cars %}{% set done = c.name in assets %}<option value="{{ c.name }}"{% if not done %} style="color:#c0392b"{% endif %}>{{ c.name }}（{{ c.level }}）{% if not done %} · 未标注{% endif %}</option>{% endfor %}
       </select>
+      <p class="hint" style="margin-top:6px">红色为未标注车型。</p>
     </div>
 
-    <h2>① 各颜色车图</h2>
+    <h2>一、车身颜色图片</h2>
     <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:14px;color:#445">
-      <input type="checkbox" name="cutout" checked style="width:auto"> 🪄 自动抠图去背景（传官方原图即可；首次抠图会下模型，稍等）
+      <input type="checkbox" name="cutout" checked style="width:auto"> 自动抠图去背景：上传官方原图即可，系统自动去除背景。首次使用需下载模型。
     </label>
     <div class="toolrow">
-      <label class="ghost" style="cursor:pointer">📁 批量导入多张图（自动分成多行）<input type="file" id="batch" accept="image/*" multiple style="display:none"></label>
-      <button type="button" class="ghost" id="addRow">＋ 加一个颜色</button>
-      <span class="hint" style="margin:0">色块会自动从图里取色；拼色车勾"拼色"加第二个颜色。</span>
+      <label class="ghost" style="cursor:pointer">批量导入图片<input type="file" id="batch" accept="image/*" multiple style="display:none"></label>
+      <button type="button" class="ghost" id="addRow">添加颜色</button>
+      <span class="hint" style="margin:0">色块由图片自动取色，可手动调整；拼色车型勾选“拼色”以设置第二种颜色。</span>
     </div>
     <div id="rows"></div>
 
-    <h2>② 在图上点 5 下标热区（所有颜色共用）</h2>
+    <h2>二、热区标注</h2>
     <div class="steps" id="steps">
       {% for p in parts %}<span class="step" data-k="{{ p.key }}">{{ loop.index }}. {{ p.label }}</span>{% endfor %}
     </div>
-    <div class="stage" id="stage"><div class="placeholder" id="ph">选车、或加一行传张图，这里就能点了</div></div>
+    <div class="stage" id="stage"><div class="placeholder" id="ph">选择车型或上传图片后，可在此标注热区</div></div>
     <p class="hint" id="tip"></p>
 
     <input type="hidden" name="hotspots" id="hotspots" value="{}">
     <div style="display:flex;gap:10px;margin-top:14px">
-      <button type="button" class="ghost" id="reset">重置红点</button>
-      <button type="submit" class="primary" style="margin-top:0;flex:1" id="save" disabled>保存这辆车</button>
+      <button type="button" class="ghost" id="reset">重置热区</button>
+      <button type="submit" class="primary" style="margin-top:0;flex:1" id="save" disabled>保存</button>
     </div>
   </form>
 
   <div class="card">
-    <h2>已标注的车</h2>
+    <h2>已标注车型</h2>
     {% if assets %}
     <table class="assets"><tr><th>车型</th><th>颜色数</th><th>红点</th></tr>
       {% for name, a in assets.items() %}<tr><td>{{ name }}</td><td>{{ a.colors|length }}</td><td>{{ a.hotspots|length }}/5</td></tr>{% endfor %}
     </table>
-    {% else %}<p class="hint">还没有标注任何车。</p>{% endif %}
+    {% else %}<p class="hint">暂无已标注车型。</p>{% endif %}
   </div>
 </div>
 
@@ -128,7 +129,7 @@
     row.innerHTML =
       '<img class="cthumb" style="display:none">'+
       '<div class="cfields">'+
-        '<input name="color_name_'+i+'" placeholder="颜色名，如 曜石黑" class="cname">'+
+        '<input name="color_name_'+i+'" placeholder="颜色名称" class="cname">'+
         '<input type="color" name="color_hex_'+i+'" value="#cccccc" class="chex" title="主色">'+
         '<label class="twolab"><input type="checkbox" class="twotone"> 拼色</label>'+
         '<input type="color" name="color_hex2_'+i+'" value="#888888" class="chex2" title="第二色" style="display:none" disabled>'+
@@ -181,7 +182,7 @@
   function refreshAnno(){
     const src=firstImage();
     if(src){ const marks=[...stage.querySelectorAll('.mk')]; stage.innerHTML=''; annoImg=document.createElement('img'); annoImg.src=src; stage.appendChild(annoImg); annoImg.addEventListener('click',onClick); marks.forEach(m=>stage.appendChild(m)); }
-    else { stage.innerHTML='<div class="placeholder">选车、或加一行传张图，这里就能点了</div>'; annoImg=null; }
+    else { stage.innerHTML='<div class="placeholder">选择车型或上传图片后，可在此标注热区</div>'; annoImg=null; }
     stepUI();
   }
 
@@ -205,7 +206,7 @@
   document.getElementById('f').addEventListener('submit', function(e){
     let bad=false;
     rowsBox.querySelectorAll('.crow').forEach(r=>{ const nm=r.querySelector('.cname').value.trim(); const hasImg=r.querySelector('.cthumb').style.display!=='none'; if(hasImg && !nm) bad=true; });
-    if(bad){ e.preventDefault(); alert('有颜色图还没填颜色名，填一下再保存'); }
+    if(bad){ e.preventDefault(); alert('存在未命名的颜色，请填写颜色名称后再保存。'); }
   });
   window.addEventListener('load', ()=>loadCar(document.getElementById('car').value));
 </script>
