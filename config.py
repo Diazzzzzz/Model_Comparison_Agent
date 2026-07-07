@@ -18,12 +18,6 @@ class Config:
 
     FORCE_MOCK = os.getenv("FORCE_MOCK", "0").strip() == "1"
 
-    # 抠图：local(本地 rembg) 或 volc(火山视觉智能，GPU，质量高)
-    CUTOUT_PROVIDER = os.getenv("CUTOUT_PROVIDER", "local").strip().lower()
-    VOLC_AK = os.getenv("VOLC_AK", "").strip()   # 火山 Access Key ID
-    VOLC_SK = os.getenv("VOLC_SK", "").strip()   # 火山 Secret Access Key
-    VOLC_SEG_ACTION = os.getenv("VOLC_SEG_ACTION", "car_segment").strip()  # car_segment / general_segment
-
     @classmethod
     def text_mock(cls) -> bool:
         """没有 DeepSeek key 或强制 mock 时，文本走演示样例。"""

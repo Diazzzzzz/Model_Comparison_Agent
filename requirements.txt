@@ -5,5 +5,3 @@ python-dotenv==1.0.1
 rembg>=2.0.50
 onnxruntime
 pillow
-# 火山视觉智能抠图（CUTOUT_PROVIDER=volc 时用）
-volcengine
