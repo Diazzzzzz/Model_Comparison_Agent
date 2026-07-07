@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>内部工具 · 车图 / 热区标注</title>
+  <title>内部工具 · 车图 / 换色 / 热区标注</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <style>
     .stage{position:relative;display:inline-block;max-width:100%;border:1px dashed #c7ccda;border-radius:12px;background:#fafbfd;cursor:crosshair;user-select:none}
@@ -17,6 +17,12 @@
     .step{font-size:13px;padding:4px 10px;border-radius:20px;background:#eef1f8;color:#556}
     .step.done{background:#e8f3ee;color:#2e7d32}
     .step.cur{background:#ff4d4f;color:#fff}
+    .crow{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+    .crow .cnum{width:22px;height:22px;border-radius:50%;background:#eef1f8;color:#556;display:flex;align-items:center;justify-content:center;font-size:12px;flex:0 0 auto}
+    .crow input[name^=color_name]{flex:1;min-width:80px}
+    .crow input[type=color]{width:44px;height:36px;padding:2px;flex:0 0 auto}
+    .crow input[type=file]{flex:2;min-width:120px}
+    .crow .cthumb{width:46px;height:32px;object-fit:cover;border-radius:6px;border:1px solid #e6e8ef;flex:0 0 auto}
     .assets{width:100%;border-collapse:collapse;font-size:14px;margin-top:8px}
     .assets th,.assets td{border-bottom:1px solid #e6e8ef;padding:8px 10px;text-align:left}
   </style>
@@ -24,34 +30,38 @@
 <body>
 <div class="wrap">
   <header class="topbar">
-    <h1>🔧 车图 / 热区标注</h1>
+    <h1>🔧 车图 / 换色 / 热区标注</h1>
     <span class="role">内部工具</span>
     <a class="ghost" href="{{ url_for('index') }}">← 回销售端</a>
   </header>
-  <div class="note">这是给运营/你自己用的内部页（不给销售看）。给一辆车上传官方图 → 依次点 5 个部件放红点 → 保存。之后客户 H5 就用这辆车的真图 + 你标的红点。将来会迁进和数据库集成的后台。</div>
+  <div class="note">给运营/你自己用（不给销售看）。给一辆车传<b>多个颜色</b>的官方图（同角度）→ 在任一张图上点 5 下标热区（<b>所有颜色通用，标一次</b>）→ 保存。客户 H5 就能换色 + 用你标的红点。将来迁进和数据库集成的后台。</div>
 
   <form class="card" method="post" action="{{ url_for('admin_save') }}" enctype="multipart/form-data" id="f">
-    <h2>① 选车 + 上传官方图</h2>
-    <div class="grid2">
-      <div class="field">
-        <label>车型</label>
-        <select name="car" id="car">
-          {% for c in cars %}<option value="{{ c.name }}">{{ c.name }}（{{ c.level }}）{{ '｜已标注' if c.name in assets else '' }}</option>{% endfor %}
-        </select>
-      </div>
-      <div class="field">
-        <label>官方车图（建议统一角度，如前侧45°；抠掉背景更好）</label>
-        <input type="file" name="image" id="img" accept="image/*">
-      </div>
+    <div class="field" style="margin-bottom:14px">
+      <label>车型</label>
+      <select name="car" id="car">
+        {% for c in cars %}<option value="{{ c.name }}">{{ c.name }}（{{ c.level }}）{{ '｜已标注' if c.name in assets else '' }}</option>{% endfor %}
+      </select>
     </div>
 
-    <h2>② 依次点击图片放红点</h2>
+    <h2>① 各颜色车图（同一角度，越统一越好）</h2>
+    <p class="hint">每行 = 一个颜色。填颜色名 + 选色块 + 传该颜色的官方图。至少一个，最多 6 个。</p>
+    {% for i in range(6) %}
+    <div class="crow" data-i="{{ i }}">
+      <span class="cnum">{{ i+1 }}</span>
+      <input name="color_name_{{ i }}" placeholder="颜色名，如 曜石黑">
+      <input type="color" name="color_hex_{{ i }}" value="#cccccc" title="色块（H5 上的圆点颜色）">
+      <input type="file" name="color_img_{{ i }}" accept="image/*" class="cfile" data-i="{{ i }}">
+      <input type="hidden" name="color_keep_{{ i }}" value="">
+      <img class="cthumb" data-i="{{ i }}" style="display:none">
+    </div>
+    {% endfor %}
+
+    <h2>② 在图上点 5 下标热区（所有颜色共用）</h2>
     <div class="steps" id="steps">
       {% for p in parts %}<span class="step" data-k="{{ p.key }}">{{ loop.index }}. {{ p.label }}</span>{% endfor %}
     </div>
-    <div class="stage" id="stage">
-      <div class="placeholder" id="ph">先选车或上传图片，然后按上面顺序在图上点 5 下</div>
-    </div>
+    <div class="stage" id="stage"><div class="placeholder" id="ph">选车、或在上面任一行传一张图，这里就能点了</div></div>
     <p class="hint" id="tip"></p>
 
     <input type="hidden" name="hotspots" id="hotspots" value="{}">
@@ -65,9 +75,9 @@
     <h2>已标注的车</h2>
     {% if assets %}
     <table class="assets">
-      <tr><th>车型</th><th>图片</th><th>红点数</th></tr>
+      <tr><th>车型</th><th>颜色数</th><th>红点</th></tr>
       {% for name, a in assets.items() %}
-      <tr><td>{{ name }}</td><td>{{ '✅ 有' if a.image else '—' }}</td><td>{{ a.hotspots|length }}/5</td></tr>
+      <tr><td>{{ name }}</td><td>{{ a.colors|length }}</td><td>{{ a.hotspots|length }}/5</td></tr>
       {% endfor %}
     </table>
     {% else %}<p class="hint">还没有标注任何车。</p>{% endif %}
@@ -78,63 +88,91 @@
   const PARTS = {{ parts|tojson }};
   const ASSETS = {{ assets|tojson }};
   const stage = document.getElementById('stage');
-  const ph = document.getElementById('ph');
   const tip = document.getElementById('tip');
   const saveBtn = document.getElementById('save');
-  let img = null, idx = 0, hotspots = {};
+  let annoImg = null, idx = 0, hotspots = {};
 
   function stepUI(){
     document.querySelectorAll('.step').forEach((el,i)=>{
       el.classList.remove('done','cur');
-      if(i < idx) el.classList.add('done');
-      else if(i === idx) el.classList.add('cur');
+      if(i<idx) el.classList.add('done'); else if(i===idx) el.classList.add('cur');
     });
-    if(idx < PARTS.length){ tip.textContent = '请点击图片标注：' + PARTS[idx].label; }
-    else { tip.textContent = '✅ 5 个红点都标好了，可以保存了'; }
-    saveBtn.disabled = (idx < PARTS.length) || !img;
+    tip.textContent = idx<PARTS.length ? ('请点击图片标注：'+PARTS[idx].label) : '✅ 5 个红点都标好了';
+    saveBtn.disabled = (idx<PARTS.length) || !annoImg;
     document.getElementById('hotspots').value = JSON.stringify(hotspots);
   }
+  function drawMark(i,xp,yp){
+    const m=document.createElement('div'); m.className='mk'; m.style.left=xp+'%'; m.style.top=yp+'%';
+    m.innerHTML=(i+1)+'<small>'+PARTS[i].label+'</small>'; stage.appendChild(m);
+  }
   function clearMarks(){ stage.querySelectorAll('.mk').forEach(e=>e.remove()); }
-  function drawMark(i, xp, yp){
-    const m = document.createElement('div'); m.className='mk';
-    m.style.left = xp+'%'; m.style.top = yp+'%';
-    m.innerHTML = (i+1) + '<small>'+PARTS[i].label+'</small>';
-    stage.appendChild(m);
+  function onClick(e){
+    if(idx>=PARTS.length) return;
+    const r=annoImg.getBoundingClientRect();
+    const xp=+(((e.clientX-r.left)/r.width)*100).toFixed(1);
+    const yp=+(((e.clientY-r.top)/r.height)*100).toFixed(1);
+    hotspots[PARTS[idx].key]=[xp,yp]; drawMark(idx,xp,yp); idx++; stepUI();
   }
-  function setImage(src){
-    stage.innerHTML=''; img = document.createElement('img'); img.src = src; stage.appendChild(img);
-    idx = 0; hotspots = {}; stepUI();
-    img.addEventListener('click', onClick);
+  function setAnnoImage(src, keepMarks){
+    const marks=[...stage.querySelectorAll('.mk')];
+    stage.innerHTML='';
+    annoImg=document.createElement('img'); annoImg.src=src; stage.appendChild(annoImg);
+    annoImg.addEventListener('click', onClick);
+    if(keepMarks) marks.forEach(m=>stage.appendChild(m));
   }
-  function loadExistingMarks(a){
-    idx = 0; hotspots = {};
-    PARTS.forEach((p,i)=>{ if(a.hotspots && a.hotspots[p.key]){ hotspots[p.key]=a.hotspots[p.key]; drawMark(i, a.hotspots[p.key][0], a.hotspots[p.key][1]); idx=i+1; } });
+  function firstAvailableImage(){
+    // 优先新上传的预览，其次已有图
+    for(let i=0;i<6;i++){
+      const f=document.querySelector('.cfile[data-i="'+i+'"]');
+      if(f && f.files && f.files[0]) return URL.createObjectURL(f.files[0]);
+    }
+    for(let i=0;i<6;i++){
+      const keep=document.querySelector('input[name="color_keep_'+i+'"]');
+      if(keep && keep.value) return keep.value;
+    }
+    return null;
+  }
+  function refreshAnno(){
+    const src=firstAvailableImage();
+    if(src){ setAnnoImage(src, true); }
+    else { stage.innerHTML='<div class="placeholder">选车、或传一张图，这里就能点了</div>'; annoImg=null; }
     stepUI();
   }
-  function onClick(e){
-    if(idx >= PARTS.length) return;
-    const r = img.getBoundingClientRect();
-    const xp = +(((e.clientX - r.left)/r.width)*100).toFixed(1);
-    const yp = +(((e.clientY - r.top)/r.height)*100).toFixed(1);
-    hotspots[PARTS[idx].key] = [xp, yp];
-    drawMark(idx, xp, yp); idx++; stepUI();
+  // 载入某车已有资产到各颜色槽 + 热区
+  function loadCar(car){
+    const a=ASSETS[car];
+    // 清空槽
+    for(let i=0;i<6;i++){
+      document.querySelector('input[name="color_name_'+i+'"]').value='';
+      document.querySelector('input[name="color_hex_'+i+'"]').value='#cccccc';
+      document.querySelector('input[name="color_keep_'+i+'"]').value='';
+      const th=document.querySelector('.cthumb[data-i="'+i+'"]'); th.style.display='none'; th.src='';
+      document.querySelector('.cfile[data-i="'+i+'"]').value='';
+    }
+    idx=0; hotspots={};
+    if(a){
+      (a.colors||[]).slice(0,6).forEach((col,i)=>{
+        document.querySelector('input[name="color_name_'+i+'"]').value=col.name||'';
+        document.querySelector('input[name="color_hex_'+i+'"]').value=col.hex||'#cccccc';
+        document.querySelector('input[name="color_keep_'+i+'"]').value=col.image||'';
+        const th=document.querySelector('.cthumb[data-i="'+i+'"]'); if(col.image){ th.src=col.image; th.style.display=''; }
+      });
+      // 先放好图，再补已有热区
+      refreshAnno();
+      PARTS.forEach((p,i)=>{ if(a.hotspots && a.hotspots[p.key]){ hotspots[p.key]=a.hotspots[p.key]; drawMark(i,a.hotspots[p.key][0],a.hotspots[p.key][1]); idx=i+1; } });
+    } else {
+      refreshAnno();
+    }
+    stepUI();
   }
-  // 选车：若已有资产则载入其图+红点
-  document.getElementById('car').addEventListener('change', function(){
-    const a = ASSETS[this.value];
-    if(a && a.image){ setImage(a.image); loadExistingMarks(a); }
-    else { stage.innerHTML='<div class="placeholder">上传这辆车的官方图，然后点 5 下</div>'; img=null; idx=0; hotspots={}; stepUI(); }
-  });
-  // 上传新图
-  document.getElementById('img').addEventListener('change', function(e){
-    const f = e.target.files[0]; if(!f) return;
-    setImage(URL.createObjectURL(f));
-  });
-  document.getElementById('reset').addEventListener('click', function(){
-    if(!img) return; clearMarks(); idx=0; hotspots={}; stepUI();
-  });
-  // 初始：若第一辆车已有资产，载入
-  window.addEventListener('load', ()=>document.getElementById('car').dispatchEvent(new Event('change')));
+  document.getElementById('car').addEventListener('change', function(){ loadCar(this.value); });
+  document.querySelectorAll('.cfile').forEach(f=>f.addEventListener('change', function(){
+    const i=this.dataset.i, th=document.querySelector('.cthumb[data-i="'+i+'"]');
+    if(this.files[0]){ th.src=URL.createObjectURL(this.files[0]); th.style.display=''; document.querySelector('input[name="color_keep_'+i+'"]').value=''; }
+    refreshAnno();
+  }));
+  document.getElementById('reset').addEventListener('click', function(){ if(annoImg){ clearMarks(); idx=0; hotspots={}; stepUI(); }});
+  window.addEventListener('load', ()=>loadCar(document.getElementById('car').value));
 </script>
 </body>
 </html>

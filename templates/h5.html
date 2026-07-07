@@ -28,6 +28,10 @@
       box-shadow:0 0 0 rgba(255,77,79,.7); animation:pulse 1.8s infinite; }
     .hot::after { content:"+"; color:#fff; font-size:20px; line-height:24px; display:block; text-align:center; font-weight:700; }
     @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(255,77,79,.6)} 70%{box-shadow:0 0 0 16px rgba(255,77,79,0)} 100%{box-shadow:0 0 0 0 rgba(255,77,79,0)} }
+    .colorbar { position:relative; z-index:2; display:flex; gap:14px; justify-content:center; margin-top:16px; }
+    .cbtn { width:34px; height:34px; border-radius:50%; border:2px solid rgba(255,255,255,.7); cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,.35); transition:transform .15s; }
+    .cbtn.active { border-color:#fff; transform:scale(1.18); box-shadow:0 0 0 3px rgba(255,255,255,.35); }
+    .colorname { position:relative; z-index:2; color:#fff; font-size:13px; margin-top:8px; text-shadow:0 1px 6px rgba(0,0,0,.5); }
     .tip { position:relative; z-index:2; color:#fff; font-size:13px; opacity:.85; margin:14px 0 6px; text-shadow:0 1px 6px rgba(0,0,0,.5); }
     .cta { position:relative; z-index:2; margin:auto 0 30px; }
     .cta a { display:inline-block; background:#ff4d4f; color:#fff; text-decoration:none; font-weight:700;
@@ -52,9 +56,9 @@
   </div>
 
   <div class="carbox">
-    {% if asset and asset.image %}
-    <!-- 管理页标注过的真车图 -->
-    <img src="{{ asset.image }}" alt="{{ r.our_car.name }}" style="width:100%;height:auto;display:block;filter:drop-shadow(0 14px 22px rgba(0,0,0,.45))">
+    {% if asset and asset.colors %}
+    <!-- 管理页标注过的真车图（首个颜色为默认，可点下方色圈切换）-->
+    <img id="carimg" src="{{ asset.colors[0].image }}" alt="{{ r.our_car.name }}" style="width:100%;height:auto;display:block;filter:drop-shadow(0 14px 22px rgba(0,0,0,.45))">
     {% else %}
     <!-- 未标注 → 通用 SUV 剪影兜底（去 /admin 上传真图后自动替换）-->
     <svg viewBox="0 0 520 230" xmlns="http://www.w3.org/2000/svg">
@@ -77,6 +81,16 @@
     {% endfor %}
   </div>
 
+  {% if asset and asset.colors and asset.colors|length > 1 %}
+  <div class="colorbar">
+    {% for col in asset.colors %}
+    <button type="button" class="cbtn {{ 'active' if loop.first else '' }}" style="background:{{ col.hex }}"
+            data-img="{{ col.image }}" title="{{ col.name }}"></button>
+    {% endfor %}
+  </div>
+  <div class="colorname" id="colorname">{{ asset.colors[0].name }}</div>
+  {% endif %}
+
   <div class="tip">👆 点点看红点</div>
   <div class="cta"><a href="#" onclick="return false;">预约试驾 · 联系销售</a></div>
 </div>
@@ -95,6 +109,15 @@
       document.getElementById('pt').textContent = el.dataset.title;
       document.getElementById('ps').textContent = el.dataset.sp;
       document.getElementById('mask').classList.add('show');
+    });
+  });
+  // 换色：点色圈 → 换车图（同角度，红点不动）
+  document.querySelectorAll('.cbtn').forEach(function(b){
+    b.addEventListener('click', function(){
+      var img = document.getElementById('carimg'); if(img) img.src = b.dataset.img;
+      var nm = document.getElementById('colorname'); if(nm) nm.textContent = b.title;
+      document.querySelectorAll('.cbtn').forEach(x=>x.classList.remove('active'));
+      b.classList.add('active');
     });
   });
   function hide(){ document.getElementById('mask').classList.remove('show'); }

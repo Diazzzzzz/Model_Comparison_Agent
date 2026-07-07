@@ -108,6 +108,20 @@ def admin():
     )
 
 
+MAX_COLORS = 6
+
+
+def _save_upload(file):
+    """保存上传图片，返回可访问路径；非法则报错。"""
+    os.makedirs(CARS_DIR, exist_ok=True)
+    ext = os.path.splitext(file.filename)[1].lower() or ".png"
+    if ext not in (".png", ".jpg", ".jpeg", ".webp"):
+        abort(400, "图片格式仅支持 png/jpg/webp")
+    fname = f"car_{uuid.uuid4().hex[:12]}{ext}"
+    file.save(os.path.join(CARS_DIR, fname))
+    return f"/static/cars/{fname}"
+
+
 @app.route("/admin/save", methods=["POST"])
 def admin_save():
     car = request.form.get("car", "").strip()
@@ -118,18 +132,21 @@ def admin_save():
     except json.JSONDecodeError:
         abort(400, "热区坐标格式错误")
 
-    image_path = ""
-    file = request.files.get("image")
-    if file and file.filename:
-        os.makedirs(CARS_DIR, exist_ok=True)
-        ext = os.path.splitext(file.filename)[1].lower() or ".png"
-        if ext not in (".png", ".jpg", ".jpeg", ".webp"):
-            abort(400, "图片格式仅支持 png/jpg/webp")
-        fname = f"car_{uuid.uuid4().hex[:12]}{ext}"
-        file.save(os.path.join(CARS_DIR, fname))
-        image_path = f"/static/cars/{fname}"
+    # 逐个颜色槽：新上传优先，其次沿用已有图；有名字+有图才算一条颜色
+    colors = []
+    for i in range(MAX_COLORS):
+        name = request.form.get(f"color_name_{i}", "").strip()
+        hexv = request.form.get(f"color_hex_{i}", "").strip() or "#cccccc"
+        keep = request.form.get(f"color_keep_{i}", "").strip()
+        f = request.files.get(f"color_img_{i}")
+        image = _save_upload(f) if (f and f.filename) else keep
+        if name and image:
+            colors.append({"name": name, "hex": hexv, "image": image})
 
-    car_assets.save_asset(car, image_path, hotspots)
+    if not colors:
+        abort(400, "至少要有一个颜色（填颜色名 + 传一张图）")
+
+    car_assets.save_asset(car, colors, hotspots)
     return redirect(url_for("admin", saved=car))
 
 

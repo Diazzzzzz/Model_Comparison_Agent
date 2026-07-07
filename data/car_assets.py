@@ -1,8 +1,13 @@
-"""每辆车的"图片 + 热区坐标"资产存储（内部管理页 /admin 写入，H5 读取）。
+"""每辆车的"多色车图 + 热区坐标"资产存储（内部管理页 /admin 写入，H5 读取）。
 
-结构：{ 车名: {"image": "/static/cars/xxx.png", "hotspots": {"front":[x%,y%], ...}} }
-存成本地 JSON（data/car_assets.json）。这是运营数据，不是代码——
-1.0 用文件顶着，将来接你们真实素材库/数据库时替换这一层即可。
+结构：
+{ 车名: {
+    "hotspots": {"front":[x%,y%], ...},          # 一套，所有颜色通用（同角度）
+    "colors":   [{"name":"曜石黑","hex":"#1c1c1c","image":"/static/cars/xxx.png"}, ...]
+} }
+
+存成本地 JSON（data/car_assets.json）。运营数据，非代码——
+1.0 用文件顶着，将来接真实素材库/数据库时替换这一层即可。
 """
 import json
 import os
@@ -21,23 +26,29 @@ def _load() -> dict:
     return {}
 
 
+def _normalize(a: dict) -> dict:
+    """兼容旧格式（单张 image）→ 统一成 colors 列表。"""
+    if "colors" not in a:
+        img = a.get("image", "")
+        a = {"hotspots": a.get("hotspots", {}),
+             "colors": ([{"name": "默认", "hex": "#888888", "image": img}] if img else [])}
+    a.setdefault("hotspots", {})
+    a.setdefault("colors", [])
+    return a
+
+
 def all_assets() -> dict:
-    return _load()
+    return {k: _normalize(v) for k, v in _load().items()}
 
 
 def get_asset(car_name: str):
-    """返回该车的 {image, hotspots}，没有则 None。"""
-    return _load().get(car_name)
+    a = _load().get(car_name)
+    return _normalize(a) if a else None
 
 
-def save_asset(car_name: str, image_path: str, hotspots: dict):
-    """写入/更新一辆车的图片路径 + 热区坐标。"""
+def save_asset(car_name: str, colors: list, hotspots: dict):
     data = _load()
-    existing = data.get(car_name, {})
-    data[car_name] = {
-        "image": image_path or existing.get("image", ""),
-        "hotspots": hotspots or existing.get("hotspots", {}),
-    }
+    data[car_name] = {"hotspots": hotspots or {}, "colors": colors or []}
     os.makedirs(os.path.dirname(_STORE), exist_ok=True)
     with open(_STORE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
