@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>内部工具 · 车图 / 热区标注</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <style>
+    .stage{position:relative;display:inline-block;max-width:100%;border:1px dashed #c7ccda;border-radius:12px;background:#fafbfd;cursor:crosshair;user-select:none}
+    .stage img{max-width:100%;display:block;border-radius:12px}
+    .stage .placeholder{padding:60px 40px;color:#8a90a2;text-align:center}
+    .mk{position:absolute;width:28px;height:28px;border-radius:50%;background:#ff4d4f;color:#fff;border:2px solid #fff;
+        transform:translate(-50%,-50%);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;
+        box-shadow:0 2px 6px rgba(0,0,0,.3);pointer-events:none}
+    .mk small{position:absolute;top:30px;white-space:nowrap;background:#222;color:#fff;font-size:11px;padding:1px 6px;border-radius:6px}
+    .steps{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+    .step{font-size:13px;padding:4px 10px;border-radius:20px;background:#eef1f8;color:#556}
+    .step.done{background:#e8f3ee;color:#2e7d32}
+    .step.cur{background:#ff4d4f;color:#fff}
+    .assets{width:100%;border-collapse:collapse;font-size:14px;margin-top:8px}
+    .assets th,.assets td{border-bottom:1px solid #e6e8ef;padding:8px 10px;text-align:left}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <header class="topbar">
+    <h1>🔧 车图 / 热区标注</h1>
+    <span class="role">内部工具</span>
+    <a class="ghost" href="{{ url_for('index') }}">← 回销售端</a>
+  </header>
+  <div class="note">这是给运营/你自己用的内部页（不给销售看）。给一辆车上传官方图 → 依次点 5 个部件放红点 → 保存。之后客户 H5 就用这辆车的真图 + 你标的红点。将来会迁进和数据库集成的后台。</div>
+
+  <form class="card" method="post" action="{{ url_for('admin_save') }}" enctype="multipart/form-data" id="f">
+    <h2>① 选车 + 上传官方图</h2>
+    <div class="grid2">
+      <div class="field">
+        <label>车型</label>
+        <select name="car" id="car">
+          {% for c in cars %}<option value="{{ c.name }}">{{ c.name }}（{{ c.level }}）{{ '｜已标注' if c.name in assets else '' }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label>官方车图（建议统一角度，如前侧45°；抠掉背景更好）</label>
+        <input type="file" name="image" id="img" accept="image/*">
+      </div>
+    </div>
+
+    <h2>② 依次点击图片放红点</h2>
+    <div class="steps" id="steps">
+      {% for p in parts %}<span class="step" data-k="{{ p.key }}">{{ loop.index }}. {{ p.label }}</span>{% endfor %}
+    </div>
+    <div class="stage" id="stage">
+      <div class="placeholder" id="ph">先选车或上传图片，然后按上面顺序在图上点 5 下</div>
+    </div>
+    <p class="hint" id="tip"></p>
+
+    <input type="hidden" name="hotspots" id="hotspots" value="{}">
+    <div style="display:flex;gap:10px;margin-top:14px">
+      <button type="button" class="ghost" id="reset">重置红点</button>
+      <button type="submit" class="primary" style="margin-top:0;flex:1" id="save" disabled>保存这辆车</button>
+    </div>
+  </form>
+
+  <div class="card">
+    <h2>已标注的车</h2>
+    {% if assets %}
+    <table class="assets">
+      <tr><th>车型</th><th>图片</th><th>红点数</th></tr>
+      {% for name, a in assets.items() %}
+      <tr><td>{{ name }}</td><td>{{ '✅ 有' if a.image else '—' }}</td><td>{{ a.hotspots|length }}/5</td></tr>
+      {% endfor %}
+    </table>
+    {% else %}<p class="hint">还没有标注任何车。</p>{% endif %}
+  </div>
+</div>
+
+<script>
+  const PARTS = {{ parts|tojson }};
+  const ASSETS = {{ assets|tojson }};
+  const stage = document.getElementById('stage');
+  const ph = document.getElementById('ph');
+  const tip = document.getElementById('tip');
+  const saveBtn = document.getElementById('save');
+  let img = null, idx = 0, hotspots = {};
+
+  function stepUI(){
+    document.querySelectorAll('.step').forEach((el,i)=>{
+      el.classList.remove('done','cur');
+      if(i < idx) el.classList.add('done');
+      else if(i === idx) el.classList.add('cur');
+    });
+    if(idx < PARTS.length){ tip.textContent = '请点击图片标注：' + PARTS[idx].label; }
+    else { tip.textContent = '✅ 5 个红点都标好了，可以保存了'; }
+    saveBtn.disabled = (idx < PARTS.length) || !img;
+    document.getElementById('hotspots').value = JSON.stringify(hotspots);
+  }
+  function clearMarks(){ stage.querySelectorAll('.mk').forEach(e=>e.remove()); }
+  function drawMark(i, xp, yp){
+    const m = document.createElement('div'); m.className='mk';
+    m.style.left = xp+'%'; m.style.top = yp+'%';
+    m.innerHTML = (i+1) + '<small>'+PARTS[i].label+'</small>';
+    stage.appendChild(m);
+  }
+  function setImage(src){
+    stage.innerHTML=''; img = document.createElement('img'); img.src = src; stage.appendChild(img);
+    idx = 0; hotspots = {}; stepUI();
+    img.addEventListener('click', onClick);
+  }
+  function loadExistingMarks(a){
+    idx = 0; hotspots = {};
+    PARTS.forEach((p,i)=>{ if(a.hotspots && a.hotspots[p.key]){ hotspots[p.key]=a.hotspots[p.key]; drawMark(i, a.hotspots[p.key][0], a.hotspots[p.key][1]); idx=i+1; } });
+    stepUI();
+  }
+  function onClick(e){
+    if(idx >= PARTS.length) return;
+    const r = img.getBoundingClientRect();
+    const xp = +(((e.clientX - r.left)/r.width)*100).toFixed(1);
+    const yp = +(((e.clientY - r.top)/r.height)*100).toFixed(1);
+    hotspots[PARTS[idx].key] = [xp, yp];
+    drawMark(idx, xp, yp); idx++; stepUI();
+  }
+  // 选车：若已有资产则载入其图+红点
+  document.getElementById('car').addEventListener('change', function(){
+    const a = ASSETS[this.value];
+    if(a && a.image){ setImage(a.image); loadExistingMarks(a); }
+    else { stage.innerHTML='<div class="placeholder">上传这辆车的官方图，然后点 5 下</div>'; img=null; idx=0; hotspots={}; stepUI(); }
+  });
+  // 上传新图
+  document.getElementById('img').addEventListener('change', function(e){
+    const f = e.target.files[0]; if(!f) return;
+    setImage(URL.createObjectURL(f));
+  });
+  document.getElementById('reset').addEventListener('click', function(){
+    if(!img) return; clearMarks(); idx=0; hotspots={}; stepUI();
+  });
+  // 初始：若第一辆车已有资产，载入
+  window.addEventListener('load', ()=>document.getElementById('car').dispatchEvent(new Event('change')));
+</script>
+</body>
+</html>

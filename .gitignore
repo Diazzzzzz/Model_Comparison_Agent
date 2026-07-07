@@ -4,4 +4,6 @@ __pycache__/
 .venv/
 venv/
 static/generated/
+static/cars/
+data/car_assets.json
 .DS_Store

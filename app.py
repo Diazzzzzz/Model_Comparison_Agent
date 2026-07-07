@@ -4,14 +4,19 @@
 运行：  pip install -r requirements.txt  &&  python app.py
 然后浏览器打开 http://127.0.0.1:5000
 """
+import os
+import json
 import uuid
 from flask import Flask, render_template, request, redirect, url_for, abort
 
 from config import Config
-from data import car_library, customer_tags, mock_contexts
+from data import car_library, customer_tags, mock_contexts, car_assets
 from agent import comparison
+from agent.prompts import HOTSPOT_PARTS
 
 app = Flask(__name__)
+
+CARS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "cars")
 
 # MVP：结果先存内存（重启即清空）。将来接数据库只改这里。
 RESULTS = {}
@@ -86,7 +91,46 @@ def h5(rid):
     data = RESULTS.get(rid)
     if not data:
         abort(404)
-    return render_template("h5.html", r=data, rid=rid)
+    # 若这辆车在管理页标注过真图+热区，就用它；否则 H5 回退到通用剪影
+    asset = car_assets.get_asset(data["our_car"]["name"])
+    return render_template("h5.html", r=data, rid=rid, asset=asset)
+
+
+# ======== 内部管理页：车图 + 热区标注（非销售页，将来迁入后台系统）========
+
+@app.route("/admin")
+def admin():
+    return render_template(
+        "admin.html",
+        cars=car_library.list_cars(),
+        parts=HOTSPOT_PARTS,
+        assets=car_assets.all_assets(),
+    )
+
+
+@app.route("/admin/save", methods=["POST"])
+def admin_save():
+    car = request.form.get("car", "").strip()
+    if not car_library.get_car(car):
+        abort(400, "请选择有效车型")
+    try:
+        hotspots = json.loads(request.form.get("hotspots", "{}"))
+    except json.JSONDecodeError:
+        abort(400, "热区坐标格式错误")
+
+    image_path = ""
+    file = request.files.get("image")
+    if file and file.filename:
+        os.makedirs(CARS_DIR, exist_ok=True)
+        ext = os.path.splitext(file.filename)[1].lower() or ".png"
+        if ext not in (".png", ".jpg", ".jpeg", ".webp"):
+            abort(400, "图片格式仅支持 png/jpg/webp")
+        fname = f"car_{uuid.uuid4().hex[:12]}{ext}"
+        file.save(os.path.join(CARS_DIR, fname))
+        image_path = f"/static/cars/{fname}"
+
+    car_assets.save_asset(car, image_path, hotspots)
+    return redirect(url_for("admin", saved=car))
 
 
 if __name__ == "__main__":

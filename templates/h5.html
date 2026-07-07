@@ -52,7 +52,11 @@
   </div>
 
   <div class="carbox">
-    <!-- 简易 SUV 剪影（真实产品换成长城官方车图 + 同样的热区坐标）-->
+    {% if asset and asset.image %}
+    <!-- 管理页标注过的真车图 -->
+    <img src="{{ asset.image }}" alt="{{ r.our_car.name }}" style="width:100%;height:auto;display:block;filter:drop-shadow(0 14px 22px rgba(0,0,0,.45))">
+    {% else %}
+    <!-- 未标注 → 通用 SUV 剪影兜底（去 /admin 上传真图后自动替换）-->
     <svg viewBox="0 0 520 230" xmlns="http://www.w3.org/2000/svg">
       <g fill="#e8eaf0" stroke="#c7ccda" stroke-width="2">
         <path d="M40 165 Q45 120 90 112 L150 70 Q165 58 195 56 L330 56 Q365 58 388 82 L440 112 Q485 118 486 158 L486 172 Q486 180 476 180 L52 180 Q40 180 40 168 Z"/>
@@ -62,10 +66,13 @@
       <circle cx="150" cy="180" r="30" fill="#2b2f3a"/><circle cx="150" cy="180" r="13" fill="#8b93a7"/>
       <circle cx="388" cy="180" r="30" fill="#2b2f3a"/><circle cx="388" cy="180" r="13" fill="#8b93a7"/>
     </svg>
-    <!-- 5 个热区，坐标固定，文案由 AI 填 -->
-    {% set pos = {'front':(88,58),'wheel':(29,80),'body':(52,64),'roof':(45,34),'cabin':(60,46)} %}
+    {% endif %}
+    <!-- 热区：坐标优先用管理页标注的，没有则用默认位置；文案由 AI 填 -->
+    {% set defpos = {'front':(88,58),'wheel':(29,80),'body':(52,64),'roof':(45,34),'cabin':(60,46)} %}
     {% for h in r.h5.hotspots %}
-      <div class="hot" style="left:{{ pos[h.part][0] }}%; top:{{ pos[h.part][1] }}%"
+      {% if asset and asset.hotspots.get(h.part) %}{% set x, y = asset.hotspots[h.part][0], asset.hotspots[h.part][1] %}
+      {% else %}{% set x, y = defpos[h.part][0], defpos[h.part][1] %}{% endif %}
+      <div class="hot" style="left:{{ x }}%; top:{{ y }}%"
            data-title="{{ h.title }}" data-sp="{{ h.selling_point }}"></div>
     {% endfor %}
   </div>
