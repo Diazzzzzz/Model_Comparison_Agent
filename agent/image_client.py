@@ -20,8 +20,9 @@ def _build_prompt(scene: str) -> str:
     scene = (scene or "a scenic open road at golden hour").strip()
     return (
         f"{scene}. Professional automotive advertisement background plate, "
-        f"empty scene with no vehicles, cinematic natural lighting, golden hour, "
-        f"rich vivid colors, deep depth of field, ultra detailed, photorealistic, 4k"
+        f"empty scenery only, cinematic natural lighting, golden hour, "
+        f"rich vivid colors, deep depth of field, ultra detailed, photorealistic, 4k. "
+        f"No people, no person, no human, no face, no crowd, no vehicles, no car, no text, no logo."
     )
 
 

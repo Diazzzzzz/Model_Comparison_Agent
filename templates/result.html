@@ -3,66 +3,58 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>对比结果 · 销售端</title>
+  <title>对比结果</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
 <div class="wrap">
   <header class="topbar">
-    <h1>📊 对比结果</h1>
-    <a class="ghost" href="{{ url_for('index') }}">← 重新生成</a>
+    <a class="ghost" href="{{ url_for('index') }}">← 返回</a>
     <span class="badge">{{ r._mode }}</span>
   </header>
 
-  <div class="summary">
-    <div class="vs">
-      <span class="ours">{{ r.our_car.name }}</span>
-      <span class="x">VS</span>
-      <span class="rival">{{ r.rival_car.name }}</span>
+  <div class="rhero">
+    <div class="rvs"><span class="ours">{{ r.our_car.name }}</span><span class="x">VS</span><span class="rival">{{ r.rival_car.name }}</span></div>
+    <p class="rone">💡 {{ r.summary }}</p>
+    {% if r.customer.get('name') or r.customer.get('care_most') %}
+    <p class="rwho">{% if r.customer.get('name') %}{{ r.customer.get('name') }} · {% endif %}{% if r.customer.get('care_most') %}最在意：{{ r.customer.get('care_most') }}{% endif %}{% if r.customer.get('worry') %} · 顾虑：{{ r.customer.get('worry') }}{% endif %}</p>
+    {% endif %}
+  </div>
+
+  <div class="sec-t">📊 多维度对比 <span class="tag">给销售看</span></div>
+  <div class="dims">
+    {% for d in r.dimensions %}
+    <div class="dcard {{ 'win' if d.winner=='ours' else ('weak' if d.winner=='rival' else '') }}">
+      <div class="dhead">
+        <span class="dname">{{ d.name }}</span>
+        {% if d.winner=='ours' %}<span class="pill ok">✓ 我方占优</span>{% elif d.winner=='rival' %}<span class="pill warn">对手更强</span>{% endif %}
+      </div>
+      <div class="dvals">
+        <div class="dv ours"><span class="dl">我方</span><span class="dvv">{{ d.our_value }}</span></div>
+        <div class="dv"><span class="dl">竞品</span><span class="dvv">{{ d.rival_value }}</span></div>
+      </div>
+      <div class="dcmt">{% if d.winner=='rival' %}<b class="fb">💬 找补</b> {% endif %}{{ d.comment }}</div>
     </div>
-    <p class="oneline">💡 {{ r.summary }}</p>
-    <p class="who">客户：{{ r.customer.get('name','') }} · 最在意：{{ r.customer.get('care_most','') }} · 顾虑：{{ r.customer.get('worry','') }}</p>
+    {% endfor %}
   </div>
 
-  <div class="card">
-    <h2>① 多维度对比表 <span class="tag">给销售看</span></h2>
-    <table class="cmp">
-      <thead>
-        <tr><th>维度</th><th class="ours">{{ r.our_car.name }}</th><th>{{ r.rival_car.name }}</th><th>点评</th></tr>
-      </thead>
-      <tbody>
-      {% for d in r.dimensions %}
-        <tr class="{{ 'win' if d.winner == 'ours' else ('weak' if d.winner == 'rival' else '') }}">
-          <td class="dim">{{ d.name }}</td>
-          <td class="ours">{{ d.our_value }}{% if d.winner == 'ours' %} <span class="chip">✓ 占优</span>{% endif %}</td>
-          <td>{{ d.rival_value }}{% if d.winner == 'rival' %} <span class="chip amber">对手更强</span>{% endif %}</td>
-          <td class="cmt">{% if d.winner == 'rival' %}<b class="fb">💬 找补</b> {% endif %}{{ d.comment }}</td>
-        </tr>
-      {% endfor %}
-      </tbody>
-    </table>
-  </div>
-
-  <div class="card">
-    <h2>② 话术 <span class="tag">销售照着说</span></h2>
+  <div class="card talkcard">
+    <div class="sec-t" style="margin:0 0 8px">🗣️ 话术 <span class="tag">照着说</span></div>
     <div class="talk">{{ r.talk_track }}</div>
   </div>
 
   <div class="card h5cta">
-    <h2>③ 客户 H5 <span class="tag">发给客户</span></h2>
-    <p>一张可点击的场景化 H5，把上面的卖点变成客户能上手玩的样子。</p>
-    <a class="primary" href="{{ url_for('h5', rid=rid) }}" target="_blank">🔗 打开客户 H5（新窗口）</a>
+    <div class="sec-t" style="margin:0 0 6px">📱 客户 H5 <span class="tag">发给客户</span></div>
+    <p class="hint">可点击的场景化 H5，把卖点变成客户能上手玩的样子。</p>
+    <a class="primary big" href="{{ url_for('h5', rid=rid) }}" target="_blank">🔗 打开客户 H5</a>
     {% set st = r.h5.image_status %}
-    <p class="imgstat
-        {{ 'ok' if st.status=='ok' else ('warn' if st.status in ['no_key','forced_mock'] else 'err') }}">
+    <p class="imgstat {{ 'ok' if st.status=='ok' else ('warn' if st.status in ['no_key','forced_mock'] else 'err') }}">
       H5 背景图：
       {% if st.status == 'ok' %}✅ 火山 AI 生成成功
       {% elif st.status == 'no_key' %}⚠️ 未配火山 key，用内置渐变背景（属正常）
-      {% elif st.status == 'forced_mock' %}⚠️ 已强制关闭图像生成（FORCE_MOCK=1）
-      {% else %}❌ 火山调用失败 —— {{ st.detail }}
-      {% endif %}
+      {% elif st.status == 'forced_mock' %}⚠️ 已强制关闭图像生成
+      {% else %}❌ 火山调用失败 —— {{ st.detail }}{% endif %}
     </p>
-    <p class="hint">真实产品里：这里会生成一个链接 + 二维码，销售直接发客户微信/WhatsApp。</p>
   </div>
 </div>
 </body>

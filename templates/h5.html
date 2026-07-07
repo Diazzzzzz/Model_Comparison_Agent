@@ -9,42 +9,44 @@
     body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; }
     .stage {
       position: relative; min-height: 100vh; overflow: hidden;
-      display: flex; flex-direction: column; align-items: center;
+      display: flex; flex-direction: column;
       {% if r.h5.scene_image_url %}
       background: url('{{ r.h5.scene_image_url }}') center/cover no-repeat;
       {% else %}
       background: linear-gradient(160deg,#2b5876 0%,#4e4376 55%,#7b6d8d 100%);
       {% endif %}
     }
-    .stage::before { content:""; position:absolute; inset:0; background:linear-gradient(180deg,rgba(0,0,0,.22),rgba(0,0,0,0) 35%,rgba(0,0,0,.32)); }
-    .h5head { position:relative; z-index:2; text-align:center; color:#fff; padding:34px 20px 10px; text-shadow:0 2px 10px rgba(0,0,0,.4); }
-    .h5head .title { font-size:26px; font-weight:800; letter-spacing:.5px; }
-    .h5head .sub { margin-top:8px; font-size:14px; opacity:.92; }
-    .h5head .car { margin-top:6px; font-size:13px; opacity:.8; }
-    .carbox { position:relative; z-index:2; width:100%; max-width:520px; margin:6px auto 0; padding:0 12px; }
-    .carbox svg { width:100%; height:auto; filter:drop-shadow(0 14px 22px rgba(0,0,0,.45)); }
+    .stage::before { content:""; position:absolute; inset:0; background:linear-gradient(180deg,rgba(0,0,0,.25),rgba(0,0,0,0) 35%,rgba(0,0,0,.35)); }
+    .h5head { position:relative; z-index:2; text-align:center; color:#fff; padding:30px 20px 6px; text-shadow:0 2px 10px rgba(0,0,0,.45); }
+    .h5head .title { font-size:25px; font-weight:800; letter-spacing:.5px; }
+    .h5head .sub { margin-top:8px; font-size:13.5px; opacity:.92; }
+    /* 中段：车垂直居中 */
+    .mid { position:relative; z-index:2; flex:1; display:flex; flex-direction:column; justify-content:center; align-items:center; padding:8px 0; }
+    .carbox { position:relative; width:100%; max-width:560px; padding:0 14px; }
+    .carbox svg, .carbox img { width:100%; height:auto; display:block; filter:drop-shadow(0 16px 26px rgba(0,0,0,.5)); }
     .hot { position:absolute; z-index:3; width:30px; height:30px; border-radius:50%;
       background:#ff4d4f; border:3px solid #fff; cursor:pointer; transform:translate(-50%,-50%);
       box-shadow:0 0 0 rgba(255,77,79,.7); animation:pulse 1.8s infinite; }
     .hot::after { content:"+"; color:#fff; font-size:20px; line-height:24px; display:block; text-align:center; font-weight:700; }
     @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(255,77,79,.6)} 70%{box-shadow:0 0 0 16px rgba(255,77,79,0)} 100%{box-shadow:0 0 0 0 rgba(255,77,79,0)} }
-    .colorbar { position:relative; z-index:2; display:flex; gap:14px; justify-content:center; margin-top:16px; }
+    .colorbar { display:flex; gap:16px; justify-content:center; margin-top:22px; }
     .cbtn { width:34px; height:34px; border-radius:50%; border:2px solid rgba(255,255,255,.7); cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,.35); transition:transform .15s; }
-    .cbtn.active { border-color:#fff; transform:scale(1.18); box-shadow:0 0 0 3px rgba(255,255,255,.35); }
-    .colorname { position:relative; z-index:2; color:#fff; font-size:13px; margin-top:8px; text-shadow:0 1px 6px rgba(0,0,0,.5); }
-    .tip { position:relative; z-index:2; color:#fff; font-size:13px; opacity:.85; margin:14px 0 6px; text-shadow:0 1px 6px rgba(0,0,0,.5); }
-    .cta { position:relative; z-index:2; margin:auto 0 30px; }
+    .cbtn.active { border-color:#fff; transform:scale(1.2); box-shadow:0 0 0 3px rgba(255,255,255,.4); }
+    .colorname { color:#fff; font-size:13px; margin-top:9px; text-shadow:0 1px 6px rgba(0,0,0,.5); }
+    .tip { color:#fff; font-size:12.5px; opacity:.82; margin-top:16px; text-shadow:0 1px 6px rgba(0,0,0,.5); }
+    .cta { position:relative; z-index:2; text-align:center; padding:16px 0 30px; }
     .cta a { display:inline-block; background:#ff4d4f; color:#fff; text-decoration:none; font-weight:700;
-      padding:14px 40px; border-radius:40px; box-shadow:0 8px 20px rgba(255,77,79,.45); font-size:16px; }
-    /* 弹窗 */
-    .mask { position:fixed; inset:0; z-index:10; background:rgba(0,0,0,.5); display:none; align-items:flex-end; }
+      padding:14px 44px; border-radius:40px; box-shadow:0 8px 22px rgba(255,77,79,.5); font-size:16px; }
+    /* 居中弹窗 */
+    .mask { position:fixed; inset:0; z-index:10; background:rgba(0,0,0,.55); display:none; align-items:center; justify-content:center; padding:26px; }
     .mask.show { display:flex; }
-    .pop { background:#fff; width:100%; border-radius:20px 20px 0 0; padding:24px 22px 30px; animation:up .25s ease; }
-    @keyframes up { from{transform:translateY(100%)} to{transform:translateY(0)} }
-    .pop h3 { font-size:20px; color:#c0392b; margin-bottom:10px; }
-    .pop p { font-size:15px; line-height:1.7; color:#333; }
-    .pop .close { margin-top:18px; text-align:center; }
-    .pop .close button { background:#222; color:#fff; border:none; padding:11px 30px; border-radius:30px; font-size:15px; }
+    .pop { background:#fff; width:100%; max-width:360px; border-radius:22px; padding:26px 24px 22px; text-align:left;
+      animation:pop .32s cubic-bezier(.2,1.35,.45,1); box-shadow:0 20px 50px rgba(0,0,0,.4); }
+    @keyframes pop { from{transform:scale(.5);opacity:0} to{transform:scale(1);opacity:1} }
+    .pop .ttl { font-size:20px; font-weight:800; color:#c0392b; margin-bottom:10px; }
+    .pop .txt { font-size:15px; line-height:1.75; color:#333; }
+    .pop .close { margin-top:20px; text-align:center; }
+    .pop .close button { background:#222; color:#fff; border:none; padding:11px 34px; border-radius:30px; font-size:15px; }
   </style>
 </head>
 <body>
@@ -52,54 +54,52 @@
   <div class="h5head">
     <div class="title">{{ r.h5.scene_title }}</div>
     <div class="sub">点亮车身上的 <b style="color:#ff8a8a">红点</b>，看看它为你多想了什么</div>
-    <div class="car">{{ r.our_car.name }}</div>
   </div>
 
-  <div class="carbox">
-    {% if asset and asset.colors %}
-    <!-- 管理页标注过的真车图（首个颜色为默认，可点下方色圈切换）-->
-    <img id="carimg" src="{{ asset.colors[0].image }}" alt="{{ r.our_car.name }}" style="width:100%;height:auto;display:block;filter:drop-shadow(0 14px 22px rgba(0,0,0,.45))">
-    {% else %}
-    <!-- 未标注 → 通用 SUV 剪影兜底（去 /admin 上传真图后自动替换）-->
-    <svg viewBox="0 0 520 230" xmlns="http://www.w3.org/2000/svg">
-      <g fill="#e8eaf0" stroke="#c7ccda" stroke-width="2">
-        <path d="M40 165 Q45 120 90 112 L150 70 Q165 58 195 56 L330 56 Q365 58 388 82 L440 112 Q485 118 486 158 L486 172 Q486 180 476 180 L52 180 Q40 180 40 168 Z"/>
-        <path d="M158 74 L300 74 L300 108 L120 108 Z" fill="#cdd6e6"/>
-        <path d="M312 74 L332 74 Q356 76 372 96 L385 108 L312 108 Z" fill="#cdd6e6"/>
-      </g>
-      <circle cx="150" cy="180" r="30" fill="#2b2f3a"/><circle cx="150" cy="180" r="13" fill="#8b93a7"/>
-      <circle cx="388" cy="180" r="30" fill="#2b2f3a"/><circle cx="388" cy="180" r="13" fill="#8b93a7"/>
-    </svg>
+  <div class="mid">
+    <div class="carbox">
+      {% if asset and asset.colors %}
+      <img id="carimg" src="{{ asset.colors[0].image }}" alt="{{ r.our_car.name }}">
+      {% else %}
+      <svg viewBox="0 0 520 230" xmlns="http://www.w3.org/2000/svg">
+        <g fill="#e8eaf0" stroke="#c7ccda" stroke-width="2">
+          <path d="M40 165 Q45 120 90 112 L150 70 Q165 58 195 56 L330 56 Q365 58 388 82 L440 112 Q485 118 486 158 L486 172 Q486 180 476 180 L52 180 Q40 180 40 168 Z"/>
+          <path d="M158 74 L300 74 L300 108 L120 108 Z" fill="#cdd6e6"/>
+          <path d="M312 74 L332 74 Q356 76 372 96 L385 108 L312 108 Z" fill="#cdd6e6"/>
+        </g>
+        <circle cx="150" cy="180" r="30" fill="#2b2f3a"/><circle cx="150" cy="180" r="13" fill="#8b93a7"/>
+        <circle cx="388" cy="180" r="30" fill="#2b2f3a"/><circle cx="388" cy="180" r="13" fill="#8b93a7"/>
+      </svg>
+      {% endif %}
+      {% set defpos = {'front':(88,58),'wheel':(29,80),'body':(52,64),'roof':(45,34),'cabin':(60,46)} %}
+      {% for h in r.h5.hotspots %}
+        {% if asset and asset.hotspots.get(h.part) %}{% set x, y = asset.hotspots[h.part][0], asset.hotspots[h.part][1] %}
+        {% else %}{% set x, y = defpos[h.part][0], defpos[h.part][1] %}{% endif %}
+        <div class="hot" style="left:{{ x }}%; top:{{ y }}%" data-title="{{ h.title }}" data-sp="{{ h.selling_point }}"></div>
+      {% endfor %}
+    </div>
+
+    {% if asset and asset.colors and asset.colors|length > 1 %}
+    <div class="colorbar">
+      {% for col in asset.colors %}
+      <button type="button" class="cbtn {{ 'active' if loop.first else '' }}"
+              style="{% if col.hex2 %}background:linear-gradient(135deg,{{ col.hex }} 0 50%,{{ col.hex2 }} 50% 100%){% else %}background:{{ col.hex }}{% endif %}"
+              data-img="{{ col.image }}" title="{{ col.name }}"></button>
+      {% endfor %}
+    </div>
+    <div class="colorname" id="colorname">{{ asset.colors[0].name }}</div>
     {% endif %}
-    <!-- 热区：坐标优先用管理页标注的，没有则用默认位置；文案由 AI 填 -->
-    {% set defpos = {'front':(88,58),'wheel':(29,80),'body':(52,64),'roof':(45,34),'cabin':(60,46)} %}
-    {% for h in r.h5.hotspots %}
-      {% if asset and asset.hotspots.get(h.part) %}{% set x, y = asset.hotspots[h.part][0], asset.hotspots[h.part][1] %}
-      {% else %}{% set x, y = defpos[h.part][0], defpos[h.part][1] %}{% endif %}
-      <div class="hot" style="left:{{ x }}%; top:{{ y }}%"
-           data-title="{{ h.title }}" data-sp="{{ h.selling_point }}"></div>
-    {% endfor %}
+
+    <div class="tip">👆 点点车身上的红点</div>
   </div>
 
-  {% if asset and asset.colors and asset.colors|length > 1 %}
-  <div class="colorbar">
-    {% for col in asset.colors %}
-    <button type="button" class="cbtn {{ 'active' if loop.first else '' }}"
-            style="{% if col.hex2 %}background:linear-gradient(135deg,{{ col.hex }} 0 50%,{{ col.hex2 }} 50% 100%){% else %}background:{{ col.hex }}{% endif %}"
-            data-img="{{ col.image }}" title="{{ col.name }}"></button>
-    {% endfor %}
-  </div>
-  <div class="colorname" id="colorname">{{ asset.colors[0].name }}</div>
-  {% endif %}
-
-  <div class="tip">👆 点点看红点</div>
   <div class="cta"><a href="#" onclick="return false;">预约试驾 · 联系销售</a></div>
 </div>
 
 <div class="mask" id="mask">
   <div class="pop">
-    <h3 id="pt"></h3>
-    <p id="ps"></p>
+    <div class="ttl" id="pt"></div>
+    <div class="txt" id="ps"></div>
     <div class="close"><button onclick="hide()">知道啦</button></div>
   </div>
 </div>
@@ -112,7 +112,6 @@
       document.getElementById('mask').classList.add('show');
     });
   });
-  // 换色：点色圈 → 换车图（同角度，红点不动）
   document.querySelectorAll('.cbtn').forEach(function(b){
     b.addEventListener('click', function(){
       var img = document.getElementById('carimg'); if(img) img.src = b.dataset.img;

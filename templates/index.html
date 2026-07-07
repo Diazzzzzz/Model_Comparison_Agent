@@ -3,88 +3,85 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>车型对比 Agent · 销售端</title>
+  <title>车型对比 Agent</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
 <div class="wrap">
   <header class="topbar">
-    <h1>🚗 车型对比 Agent</h1>
-    <span class="role">销售端</span>
-    {% if mock_mode %}<span class="badge mock">演示模式 · 未配 DeepSeek key</span>{% endif %}
+    <h1>🚗 车型对比</h1>
+    {% if mock_mode %}<span class="badge mock">演示模式</span>{% endif %}
   </header>
 
-  {% if note %}<div class="note">✅ {{ note }}</div>{% endif %}
+  <form method="post" action="{{ url_for('generate') }}" class="card hero">
+    <h2 class="hero-t">帮客户在两款车之间做选择</h2>
+    <p class="hero-s">选好车型，一键生成对比、话术和可发给客户的 H5。</p>
 
-  {% if dialogue %}
-  <div class="card dialog">
-    <h2>🎙️ 现场对话 <span class="tag">工牌录音转写（模拟）</span></h2>
-    <div class="chat">
-      {% for line in dialogue %}
-      <div class="bubble {{ 'sales' if line.who == '销售' else 'cust' }}">
-        <span class="who">{{ line.who }}</span>
-        <span class="text">{{ line.text }}</span>
-      </div>
-      {% endfor %}
-    </div>
-    <p class="hint">↓ 下面的客户标签就是从这段对话自动提炼出来的（可手动改）。</p>
-  </div>
-  {% endif %}
-
-  <div class="quickfill">
-    <form method="get" action="{{ url_for('index') }}" class="inline">
-      <label>快速载入示例客户</label>
-      <select name="customer_id">
-        {% for c in preset_customers %}
-        <option value="{{ c.id }}">{{ c.name }}（{{ c.intent_car }} vs {{ c.rival_car }}）</option>
-        {% endfor %}
-      </select>
-      <button class="ghost">载入</button>
-    </form>
-    <form method="get" action="{{ url_for('index') }}" class="inline">
-      <label>或 从现场对话自动提炼</label>
-      <select name="ctx_id">
-        {% for x in contexts %}
-        <option value="{{ x.id }}">{{ x.title }}</option>
-        {% endfor %}
-      </select>
-      <button class="ghost">🎙️ 提炼标签</button>
-    </form>
-  </div>
-
-  <form method="post" action="{{ url_for('generate') }}" class="card">
-    <h2>① 客户标签</h2>
-    <p class="hint">这些字段就是"顾客库统一字段"，可整体替换成你们真实标签。</p>
-    <div class="grid">
-      {% for item in schema %}
-      <div class="field">
-        <label>{{ item.label }}</label>
-        <input name="{{ item.key }}" value="{{ customer.get(item.key, '') }}"
-               placeholder="{{ item.label }}">
-      </div>
-      {% endfor %}
-    </div>
-
-    <h2>② 选择对比车型</h2>
-    <div class="grid2">
-      <div class="field">
-        <label>我方意向车型（帮它说话）</label>
+    <div class="pickgrid">
+      <div class="pick-col ours">
+        <label>我方意向车型</label>
         <select name="sel_our">
-          {% for c in our_cars %}<option value="{{ c.name }}" {{ 'selected' if c.name == customer.get('intent_car') else '' }}>{{ c.name }}（{{ c.level }}）</option>{% endfor %}
+          {% for c in our_cars %}<option value="{{ c.name }}" {{ 'selected' if c.name == customer.get('intent_car') else '' }}>{{ c.name }}</option>{% endfor %}
         </select>
+        <span class="pick-tag">主推</span>
       </div>
-      <div class="field">
+      <div class="vs-badge">VS</div>
+      <div class="pick-col">
         <label>客户在纠结的竞品</label>
         <select name="sel_rival">
           {% for c in rival_cars %}<option value="{{ c.name }}" {{ 'selected' if c.name == customer.get('rival_car') else '' }}>{{ c.name }}（{{ c.brand }}）</option>{% endfor %}
         </select>
+        <span class="pick-tag rival">竞品</span>
       </div>
     </div>
 
-    <button type="submit" class="primary">⚡ 一键生成对比 · 话术 · 客户H5</button>
+    <button type="submit" class="primary big">⚡ 一键生成对比</button>
+
+    <details class="custbox" {{ 'open' if note or dialogue else '' }}>
+      <summary>▸ 填写客户信息（内部用 · 正式版由系统自动带入）</summary>
+      <div class="custinner">
+        {% if note %}<div class="note">✅ {{ note }}</div>{% endif %}
+        <div class="quickfill">
+          <div class="inline">
+            <label>载入示例客户</label>
+            <select onchange="if(this.value)location.href='?customer_id='+this.value">
+              <option value="">选择…</option>
+              {% for c in preset_customers %}<option value="{{ c.id }}">{{ c.name }}（{{ c.intent_car }} vs {{ c.rival_car }}）</option>{% endfor %}
+            </select>
+          </div>
+          <div class="inline">
+            <label>🎙️ 从对话自动提炼</label>
+            <select onchange="if(this.value)location.href='?ctx_id='+this.value">
+              <option value="">选择…</option>
+              {% for x in contexts %}<option value="{{ x.id }}">{{ x.title }}</option>{% endfor %}
+            </select>
+          </div>
+        </div>
+
+        {% if dialogue %}
+        <div class="chatbox">
+          <div class="chat-h">🎙️ 现场对话（转写）</div>
+          <div class="chat">
+            {% for line in dialogue %}
+            <div class="bubble {{ 'sales' if line.who == '销售' else 'cust' }}"><span class="who">{{ line.who }}</span><span class="text">{{ line.text }}</span></div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+
+        <div class="grid">
+          {% for item in schema %}
+          <div class="field">
+            <label>{{ item.label }}</label>
+            <input name="{{ item.key }}" value="{{ customer.get(item.key, '') }}" placeholder="{{ item.label }}">
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </details>
   </form>
 
-  <footer class="foot">车型库 / 客户标签均为模拟数据，可替换为真实数据源。 · <a href="{{ url_for('admin') }}">🔧 内部工具：车图/热区标注</a></footer>
+  <footer class="foot">数据均为模拟，可替换为真实数据源 · <a href="{{ url_for('admin') }}">🔧 内部工具</a></footer>
 </div>
 </body>
 </html>
