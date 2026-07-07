@@ -60,7 +60,8 @@ def _normalize(result: dict) -> dict:
             "part": p["key"],
             "label": p["label"],
             "title": h.get("title") or p["label"],
-            "selling_point": h.get("selling_point") or "点击了解这个部件的优势",
+            "data": h.get("data") or "",
+            "benefit": h.get("benefit") or h.get("selling_point") or "点击了解这个部件的优势",
         })
     h5["hotspots"] = fixed
     return result

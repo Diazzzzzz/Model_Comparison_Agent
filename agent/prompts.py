@@ -37,7 +37,10 @@ def build_user_prompt(customer: dict, our_car: dict, rival_car: dict) -> str:
             "scene_title": "H5 场景标题（如：带娃出游的安全之选）",
             "scene_prompt": "一句英文的图像生成提示词，描述适合这台车的户外场景背景，不要出现车",
             "hotspots": [
-                {"part": f"上面5个part之一({parts_desc})", "title": "点这个部件弹窗的标题", "selling_point": "点击后弹出的卖点文案，1-2句，突出我方优势"}
+                {"part": f"上面5个part之一({parts_desc})",
+                 "title": "5-8字短标题",
+                 "data": "该部件的关键参数/数据（短，带数字，如 '2.0T 204马力' '高强度钢78%'）",
+                 "benefit": "人话解读：这个数据对购车人有啥实在方便/好处，1-2句，别堆术语"}
             ],
         },
     }

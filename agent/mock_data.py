@@ -93,15 +93,21 @@ def _mock_comment(key, customer):
 
 def _mock_hotspots(our_car):
     specs = our_car["specs"]
+    # 每项：(标题, 数据, 人话解读)
     text = {
-        "front": ("动力更从容", f"{specs.get('动力','强劲动力')}，市区超车、上坡满载都不费劲。"),
-        "wheel": ("底盘更扎实", f"{specs.get('底盘/悬架','独立悬架')}，过烂路、跑长途都更稳更舒服。"),
-        "body": ("车身更护人", f"{specs.get('车身用钢','高强度车身')}，{specs.get('安全','多气囊')}，一家人的安全底线拉满。"),
-        "roof": ("空间更能装", f"后备箱{specs.get('后备箱','超大后备箱')}，轴距{specs.get('轴距','宽敞')}，全家出游/露营装备随便塞。"),
-        "cabin": ("座舱更聪明", f"{specs.get('智能座舱','智能大屏')}，还有{specs.get('质保','长质保')}兜底，用着省心。"),
+        "front": ("动力更从容", specs.get('动力', '强劲动力'),
+                  "市区超车、上坡满载都不费劲，开着不憋屈。"),
+        "wheel": ("底盘更稳", specs.get('底盘/悬架', '独立悬架'),
+                  "过烂路、跑长途都更稳更舒服，家人坐着不颠。"),
+        "body": ("车身更护人", f"{specs.get('车身用钢', '高强度车身')}｜{specs.get('安全', '多气囊')}",
+                 "真撞上了车身不容易变形，护住一家人。"),
+        "roof": ("空间更能装", f"后备箱{specs.get('后备箱', '超大')}｜轴距{specs.get('轴距', '宽敞')}",
+                 "婴儿车、露营装备随便塞，出行不用取舍。"),
+        "cabin": ("座舱更聪明", f"{specs.get('智能座舱', '智能大屏')}｜{specs.get('质保', '长质保')}",
+                  "大屏语音一句话搞定，还有长质保兜底，用着省心。"),
     }
     out = []
     for p in HOTSPOT_PARTS:
-        title, sp = text[p["key"]]
-        out.append({"part": p["key"], "title": title, "selling_point": sp})
+        title, data, benefit = text[p["key"]]
+        out.append({"part": p["key"], "title": title, "data": data, "benefit": benefit})
     return out
