@@ -173,8 +173,20 @@
     refreshAnno();
   }
   // 选图 → 即时抠图 → 应用（返回 Promise，供批量顺序处理）
+  // 从文件名提取颜色名：去掉车型名（命名规则=车型+颜色）
+  function colorFromFilename(fname, car){
+    let s = (fname||'').replace(/\.[^.]+$/, '');       // 去扩展名
+    if(car){
+      s = s.split(car).join('');                        // 去掉整个车型名
+      car.split(/[\s\-_·—()（）]+/).forEach(w=>{ if(w && w.length>=2) s = s.split(w).join(''); }); // 去车型名里的分词
+    }
+    return s.replace(/^[\s\-_·—()（）0-9]+|[\s\-_·—()（）]+$/g, '').trim();  // 去两端分隔符/编号
+  }
+
   function cutoutInto(row, f){
     const pick=row.querySelector('.pick'), keep=row.querySelector('input[type=hidden]'), file=row.querySelector('.cfile');
+    const nameInp=row.querySelector('.cname');
+    if(nameInp && !nameInp.value.trim()){ const cn=colorFromFilename(f.name, document.getElementById('car').value); if(cn) nameInp.value=cn; }
     pick.disabled=true; pick.innerHTML='<span class="spin"></span>抠图中';
     const fd=new FormData(); fd.append('image',f); fd.append('cutout', cutoutOn()?'on':'off');
     return fetch('/admin/cutout',{method:'POST',body:fd}).then(r=>r.ok?r.json():Promise.reject())
