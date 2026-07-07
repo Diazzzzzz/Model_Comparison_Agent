@@ -66,8 +66,7 @@
       <input type="checkbox" name="cutout" checked style="width:auto"> 自动抠图去背景：上传官方原图即可，系统自动去除背景。首次使用需下载模型。
     </label>
     <div class="toolrow">
-      <label class="ghost" style="cursor:pointer">批量导入图片<input type="file" id="batch" accept="image/*" multiple style="display:none"></label>
-      <button type="button" class="ghost" id="addRow">添加颜色</button>
+      <label class="ghost" style="cursor:pointer">导入图片（可多选）<input type="file" id="batch" accept="image/*" multiple style="display:none"></label>
       <span class="hint" id="batchprog" style="margin:0"></span>
       <span class="hint" style="margin:0">色块由图片自动取色，可手动调整；拼色车型勾选“拼色”以设置第二种颜色。</span>
     </div>
@@ -268,7 +267,6 @@
   }
 
   document.getElementById('car').addEventListener('change', function(){ loadCar(this.value); });
-  document.getElementById('addRow').addEventListener('click', ()=>addRow());
   document.getElementById('reset').addEventListener('click', function(){
     stage.querySelectorAll('.mk').forEach(m=>m.remove());   // 清掉画布上的红点
     idx=0; hotspots={}; stepUI();                            // 重置进度，可重新点 5 个
