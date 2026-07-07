@@ -177,6 +177,7 @@
 
   function loadCar(car){
     rowsBox.innerHTML=''; ridx=0; idx=0; hotspots={};
+    stage.querySelectorAll('.mk').forEach(m=>m.remove());  // 清掉上一辆车的旧红点，避免叠加
     const a=ASSETS[car];
     if(a && a.colors && a.colors.length){ a.colors.forEach(col=>addRow({name:col.name,hex:col.hex,hex2:col.hex2,keep:col.image})); }
     else { addRow(); }
