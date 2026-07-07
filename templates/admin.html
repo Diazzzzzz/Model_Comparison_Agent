@@ -260,6 +260,9 @@
   document.getElementById('batch').addEventListener('change', async function(){
     const files=[...this.files]; this.value=''; let n=0;
     for(const f of files){ n++; batchProg.textContent='正在抠图 '+n+'/'+files.length+'…'; const row=addRow(); await cutoutInto(row, f); }
+    // 清掉没有图也没填名字的空行（比如初始那个占位行）
+    rowsBox.querySelectorAll('.crow').forEach(r=>{ if(r.querySelector('.cthumb').style.display==='none' && !r.querySelector('.cname').value.trim()) r.remove(); });
+    refreshAnno();
     batchProg.textContent='已导入 '+files.length+' 张，请填写颜色名称';
     setTimeout(()=>batchProg.textContent='', 4000);
   });
