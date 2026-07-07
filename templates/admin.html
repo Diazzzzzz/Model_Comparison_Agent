@@ -105,13 +105,27 @@
         const W=120,H=Math.max(2,Math.round(120*im.height/im.width));
         const cv=document.createElement('canvas'); cv.width=W; cv.height=H;
         const cx=cv.getContext('2d'); cx.drawImage(im,0,0,W,H);
-        const yT=Math.round(H*(region==='top'?0.10:0.42)), yB=Math.round(H*(region==='top'?0.30:0.70));
-        const xL=Math.round(W*0.26), xR=Math.round(W*0.74);
-        const d=cx.getImageData(xL,yT,xR-xL,Math.max(1,yB-yT)).data, buckets={}, sum={};
-        for(let i=0;i<d.length;i+=4){ if(d[i+3]<128)continue; const r=d[i],g=d[i+1],b=d[i+2],k=(r>>5)+'-'+(g>>5)+'-'+(b>>5);
-          buckets[k]=(buckets[k]||0)+1; if(!sum[k])sum[k]=[0,0,0,0]; sum[k][0]+=r;sum[k][1]+=g;sum[k][2]+=b;sum[k][3]++; }
-        let best=null,bn=0; for(const k in buckets){ if(buckets[k]>bn){bn=buckets[k];best=k;} }
-        if(!best){cb(null);return;}
+        // 车身门板带（避开顶部车窗和底部轮胎）
+        const yT=Math.round(H*(region==='top'?0.10:0.30)), yB=Math.round(H*(region==='top'?0.28:0.60));
+        const xL=Math.round(W*0.28), xR=Math.round(W*0.72);
+        const d=cx.getImageData(xL,yT,xR-xL,Math.max(1,yB-yT)).data;
+        const all={}, col={}, sum={}; let allN=0, colN=0;
+        for(let i=0;i<d.length;i+=4){
+          if(d[i+3]<128) continue;
+          const r=d[i],g=d[i+1],b=d[i+2], mx=Math.max(r,g,b), mn=Math.min(r,g,b);
+          const sat = mx? (mx-mn)/mx : 0;
+          const k=(r>>5)+'-'+(g>>5)+'-'+(b>>5);
+          all[k]=(all[k]||0)+1; allN++;
+          if(!sum[k]) sum[k]=[0,0,0,0];
+          sum[k][0]+=r; sum[k][1]+=g; sum[k][2]+=b; sum[k][3]++;
+          // "有彩色的车漆"：有饱和度、不太黑、不太白（滤掉玻璃/轮胎/高光）
+          if(sat>0.22 && mx>45 && mn<235){ col[k]=(col[k]||0)+1; colN++; }
+        }
+        if(!allN){ cb(null); return; }
+        // 彩色像素够多 → 用彩色主色；否则整车是黑/白/银 → 用整体主色
+        const pool = (colN/allN > 0.08) ? col : all;
+        let best=null,bn=0; for(const k in pool){ if(pool[k]>bn){ bn=pool[k]; best=k; } }
+        if(!best){ cb(null); return; }
         const s=sum[best]; cb('#'+[s[0]/s[3],s[1]/s[3],s[2]/s[3]].map(v=>Math.round(v).toString(16).padStart(2,'0')).join(''));
       }catch(e){ cb(null); }
     };
