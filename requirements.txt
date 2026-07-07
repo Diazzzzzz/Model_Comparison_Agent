@@ -1,3 +1,7 @@
 Flask==3.0.3
 requests==2.32.3
 python-dotenv==1.0.1
+# 自动抠图（去背景）。较大，首次抠图会下载模型(~170MB)。不装也能跑，只是抠图不可用。
+rembg>=2.0.50
+onnxruntime
+pillow

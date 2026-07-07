@@ -11,7 +11,7 @@ from flask import Flask, render_template, request, redirect, url_for, abort
 
 from config import Config
 from data import car_library, customer_tags, mock_contexts, car_assets
-from agent import comparison
+from agent import comparison, bg_remove
 from agent.prompts import HOTSPOT_PARTS
 
 app = Flask(__name__)
@@ -111,14 +111,21 @@ def admin():
 MAX_COLORS = 6
 
 
-def _save_upload(file):
-    """保存上传图片，返回可访问路径；非法则报错。"""
-    os.makedirs(CARS_DIR, exist_ok=True)
+def _save_upload(file, cutout=True):
+    """保存上传图片，返回可访问路径；非法则报错。
+    cutout=True 时先自动去背景，存成透明 PNG。"""
     ext = os.path.splitext(file.filename)[1].lower() or ".png"
     if ext not in (".png", ".jpg", ".jpeg", ".webp"):
         abort(400, "图片格式仅支持 png/jpg/webp")
+    raw = file.read()
+    if cutout:
+        raw, ok = bg_remove.remove_bg(raw)
+        if ok:
+            ext = ".png"  # 抠图结果一定是透明 PNG
+    os.makedirs(CARS_DIR, exist_ok=True)
     fname = f"car_{uuid.uuid4().hex[:12]}{ext}"
-    file.save(os.path.join(CARS_DIR, fname))
+    with open(os.path.join(CARS_DIR, fname), "wb") as fp:
+        fp.write(raw)
     return f"/static/cars/{fname}"
 
 
@@ -132,6 +139,8 @@ def admin_save():
     except json.JSONDecodeError:
         abort(400, "热区坐标格式错误")
 
+    cutout = request.form.get("cutout") == "on"  # 是否自动抠图
+
     # 逐个颜色槽：新上传优先，其次沿用已有图；有名字+有图才算一条颜色
     colors = []
     for i in range(MAX_COLORS):
@@ -139,7 +148,7 @@ def admin_save():
         hexv = request.form.get(f"color_hex_{i}", "").strip() or "#cccccc"
         keep = request.form.get(f"color_keep_{i}", "").strip()
         f = request.files.get(f"color_img_{i}")
-        image = _save_upload(f) if (f and f.filename) else keep
+        image = _save_upload(f, cutout) if (f and f.filename) else keep
         if name and image:
             colors.append({"name": name, "hex": hexv, "image": image})
 

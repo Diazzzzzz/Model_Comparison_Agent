@@ -46,6 +46,9 @@
 
     <h2>① 各颜色车图（同一角度，越统一越好）</h2>
     <p class="hint">每行 = 一个颜色。填颜色名 + 选色块 + 传该颜色的官方图。至少一个，最多 6 个。</p>
+    <label style="display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:14px;color:#445">
+      <input type="checkbox" name="cutout" checked style="width:auto"> 🪄 自动抠图去背景（推荐；直接传官方原图即可，系统去掉背景。首次抠图会下模型，稍等）
+    </label>
     {% for i in range(6) %}
     <div class="crow" data-i="{{ i }}">
       <span class="cnum">{{ i+1 }}</span>
