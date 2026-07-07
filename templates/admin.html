@@ -9,20 +9,20 @@
     .stage{position:relative;display:inline-block;max-width:100%;border:1px dashed #c7ccda;border-radius:12px;background:#fafbfd;cursor:crosshair;user-select:none}
     .stage img{max-width:100%;display:block;border-radius:12px}
     .stage .placeholder{padding:60px 40px;color:#8a90a2;text-align:center}
-    .mk{position:absolute;width:28px;height:28px;border-radius:50%;background:#ff4d4f;color:#fff;border:2px solid #fff;
-        transform:translate(-50%,-50%);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;
-        box-shadow:0 2px 6px rgba(0,0,0,.3);pointer-events:none}
+    .mk{position:absolute;width:28px;height:28px;border-radius:50%;background:#ff4d4f;color:#fff;border:2px solid #fff;transform:translate(-50%,-50%);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,.3);pointer-events:none}
     .mk small{position:absolute;top:30px;white-space:nowrap;background:#222;color:#fff;font-size:11px;padding:1px 6px;border-radius:6px}
     .steps{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
     .step{font-size:13px;padding:4px 10px;border-radius:20px;background:#eef1f8;color:#556}
-    .step.done{background:#e8f3ee;color:#2e7d32}
-    .step.cur{background:#ff4d4f;color:#fff}
-    .crow{display:flex;align-items:center;gap:8px;margin-bottom:8px}
-    .crow .cnum{width:22px;height:22px;border-radius:50%;background:#eef1f8;color:#556;display:flex;align-items:center;justify-content:center;font-size:12px;flex:0 0 auto}
-    .crow input[name^=color_name]{flex:1;min-width:80px}
-    .crow input[type=color]{width:44px;height:36px;padding:2px;flex:0 0 auto}
-    .crow input[type=file]{flex:2;min-width:120px}
-    .crow .cthumb{width:46px;height:32px;object-fit:cover;border-radius:6px;border:1px solid #e6e8ef;flex:0 0 auto}
+    .step.done{background:#e8f3ee;color:#2e7d32} .step.cur{background:#ff4d4f;color:#fff}
+    .crow{display:flex;align-items:center;gap:10px;margin-bottom:10px;padding:8px;border:1px solid #eef1f8;border-radius:10px}
+    .crow .cthumb{width:64px;height:44px;object-fit:contain;background:#f4f5f8;border-radius:6px;border:1px solid #e6e8ef;flex:0 0 auto}
+    .crow .cfields{flex:1;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .crow .cname{flex:1;min-width:110px}
+    .crow input[type=color]{width:40px;height:34px;padding:2px}
+    .crow .twolab{font-size:12.5px;color:#556;display:flex;align-items:center;gap:4px;white-space:nowrap}
+    .crow .cfile{flex:1;min-width:120px}
+    .crow .del{color:#c0392b;flex:0 0 auto}
+    .toolrow{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin:10px 0 4px}
     .assets{width:100%;border-collapse:collapse;font-size:14px;margin-top:8px}
     .assets th,.assets td{border-bottom:1px solid #e6e8ef;padding:8px 10px;text-align:left}
   </style>
@@ -34,7 +34,7 @@
     <span class="role">内部工具</span>
     <a class="ghost" href="{{ url_for('index') }}">← 回销售端</a>
   </header>
-  <div class="note">给运营/你自己用（不给销售看）。给一辆车传<b>多个颜色</b>的官方图（同角度）→ 在任一张图上点 5 下标热区（<b>所有颜色通用，标一次</b>）→ 保存。客户 H5 就能换色 + 用你标的红点。将来迁进和数据库集成的后台。</div>
+  <div class="note">给一辆车传<b>多个颜色</b>的官方图（同角度）→ 在任一张图上点 5 下标热区（<b>所有颜色通用，标一次</b>）→ 保存。客户 H5 就能换色 + 用你标的红点。</div>
 
   <form class="card" method="post" action="{{ url_for('admin_save') }}" enctype="multipart/form-data" id="f">
     <div class="field" style="margin-bottom:14px">
@@ -44,27 +44,22 @@
       </select>
     </div>
 
-    <h2>① 各颜色车图（同一角度，越统一越好）</h2>
-    <p class="hint">每行 = 一个颜色。填颜色名 + 选色块 + 传该颜色的官方图。至少一个，最多 6 个。</p>
-    <label style="display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:14px;color:#445">
-      <input type="checkbox" name="cutout" checked style="width:auto"> 🪄 自动抠图去背景（推荐；直接传官方原图即可，系统去掉背景。首次抠图会下模型，稍等）
+    <h2>① 各颜色车图</h2>
+    <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:14px;color:#445">
+      <input type="checkbox" name="cutout" checked style="width:auto"> 🪄 自动抠图去背景（传官方原图即可；首次抠图会下模型，稍等）
     </label>
-    {% for i in range(6) %}
-    <div class="crow" data-i="{{ i }}">
-      <span class="cnum">{{ i+1 }}</span>
-      <input name="color_name_{{ i }}" placeholder="颜色名，如 曜石黑">
-      <input type="color" name="color_hex_{{ i }}" value="#cccccc" title="色块（H5 上的圆点颜色）">
-      <input type="file" name="color_img_{{ i }}" accept="image/*" class="cfile" data-i="{{ i }}">
-      <input type="hidden" name="color_keep_{{ i }}" value="">
-      <img class="cthumb" data-i="{{ i }}" style="display:none">
+    <div class="toolrow">
+      <label class="ghost" style="cursor:pointer">📁 批量导入多张图（自动分成多行）<input type="file" id="batch" accept="image/*" multiple style="display:none"></label>
+      <button type="button" class="ghost" id="addRow">＋ 加一个颜色</button>
+      <span class="hint" style="margin:0">色块会自动从图里取色；拼色车勾"拼色"加第二个颜色。</span>
     </div>
-    {% endfor %}
+    <div id="rows"></div>
 
     <h2>② 在图上点 5 下标热区（所有颜色共用）</h2>
     <div class="steps" id="steps">
       {% for p in parts %}<span class="step" data-k="{{ p.key }}">{{ loop.index }}. {{ p.label }}</span>{% endfor %}
     </div>
-    <div class="stage" id="stage"><div class="placeholder" id="ph">选车、或在上面任一行传一张图，这里就能点了</div></div>
+    <div class="stage" id="stage"><div class="placeholder" id="ph">选车、或加一行传张图，这里就能点了</div></div>
     <p class="hint" id="tip"></p>
 
     <input type="hidden" name="hotspots" id="hotspots" value="{}">
@@ -77,11 +72,8 @@
   <div class="card">
     <h2>已标注的车</h2>
     {% if assets %}
-    <table class="assets">
-      <tr><th>车型</th><th>颜色数</th><th>红点</th></tr>
-      {% for name, a in assets.items() %}
-      <tr><td>{{ name }}</td><td>{{ a.colors|length }}</td><td>{{ a.hotspots|length }}/5</td></tr>
-      {% endfor %}
+    <table class="assets"><tr><th>车型</th><th>颜色数</th><th>红点</th></tr>
+      {% for name, a in assets.items() %}<tr><td>{{ name }}</td><td>{{ a.colors|length }}</td><td>{{ a.hotspots|length }}/5</td></tr>{% endfor %}
     </table>
     {% else %}<p class="hint">还没有标注任何车。</p>{% endif %}
   </div>
@@ -90,91 +82,105 @@
 <script>
   const PARTS = {{ parts|tojson }};
   const ASSETS = {{ assets|tojson }};
+  const rowsBox = document.getElementById('rows');
   const stage = document.getElementById('stage');
   const tip = document.getElementById('tip');
   const saveBtn = document.getElementById('save');
-  let annoImg = null, idx = 0, hotspots = {};
+  let ridx = 0, annoImg = null, idx = 0, hotspots = {};
 
-  function stepUI(){
-    document.querySelectorAll('.step').forEach((el,i)=>{
-      el.classList.remove('done','cur');
-      if(i<idx) el.classList.add('done'); else if(i===idx) el.classList.add('cur');
+  // ---- 从图里取主色（同源图/blob 可用 canvas 采样）----
+  function sampleColor(src, region, cb){
+    const im = new Image();
+    im.onload = function(){
+      try{
+        const cv=document.createElement('canvas'); cv.width=64; cv.height=48;
+        const cx=cv.getContext('2d'); cx.drawImage(im,0,0,64,48);
+        const y0 = region==='top'?4:22, y1 = region==='top'?16:38;
+        const d=cx.getImageData(18,y0,28,y1-y0).data;
+        let r=0,g=0,b=0,n=0;
+        for(let i=0;i<d.length;i+=4){ if(d[i+3]>128){ r+=d[i];g+=d[i+1];b+=d[i+2];n++; } }
+        if(!n){ cb(null); return; }
+        const h='#'+[r,g,b].map(v=>Math.round(v/n).toString(16).padStart(2,'0')).join('');
+        cb(h);
+      }catch(e){ cb(null); }
+    };
+    im.onerror=function(){ cb(null); };
+    im.src = src;
+  }
+
+  // ---- 一行颜色 ----
+  function addRow(prefill){
+    const i = ridx++;
+    const row = document.createElement('div'); row.className='crow'; row.dataset.i=i;
+    row.innerHTML =
+      '<img class="cthumb" style="display:none">'+
+      '<div class="cfields">'+
+        '<input name="color_name_'+i+'" placeholder="颜色名，如 曜石黑" class="cname">'+
+        '<input type="color" name="color_hex_'+i+'" value="#cccccc" class="chex" title="主色">'+
+        '<label class="twolab"><input type="checkbox" class="twotone"> 拼色</label>'+
+        '<input type="color" name="color_hex2_'+i+'" value="#888888" class="chex2" title="第二色" style="display:none" disabled>'+
+        '<input type="file" name="color_img_'+i+'" accept="image/*" class="cfile">'+
+        '<input type="hidden" name="color_keep_'+i+'" value="">'+
+      '</div>'+
+      '<button type="button" class="del ghost">删除</button>';
+    rowsBox.appendChild(row);
+    const thumb=row.querySelector('.cthumb'), file=row.querySelector('.cfile'),
+          keep=row.querySelector('input[type=hidden]'), hex=row.querySelector('.chex'),
+          hex2=row.querySelector('.chex2'), two=row.querySelector('.twotone'),
+          name=row.querySelector('.cname');
+    function useSrc(src){ thumb.src=src; thumb.style.display=''; sampleColor(src,'center',h=>{ if(h) hex.value=h; }); refreshAnno(); }
+    if(prefill){
+      name.value=prefill.name||''; if(prefill.hex) hex.value=prefill.hex;
+      if(prefill.keep){ keep.value=prefill.keep; useSrc(prefill.keep); }
+      if(prefill.hex2){ two.checked=true; hex2.disabled=false; hex2.style.display=''; hex2.value=prefill.hex2; }
+    }
+    file.addEventListener('change', function(){ if(this.files[0]){ keep.value=''; useSrc(URL.createObjectURL(this.files[0])); } });
+    two.addEventListener('change', function(){
+      hex2.disabled=!this.checked; hex2.style.display=this.checked?'':'none';
+      if(this.checked && thumb.src) sampleColor(thumb.src,'top',h=>{ if(h) hex2.value=h; });
     });
+    row.querySelector('.del').addEventListener('click', function(){ row.remove(); refreshAnno(); });
+    return row;
+  }
+
+  // ---- 热区标注 ----
+  function stepUI(){
+    document.querySelectorAll('.step').forEach((el,i)=>{ el.classList.remove('done','cur'); if(i<idx)el.classList.add('done'); else if(i===idx)el.classList.add('cur'); });
     tip.textContent = idx<PARTS.length ? ('请点击图片标注：'+PARTS[idx].label) : '✅ 5 个红点都标好了';
     saveBtn.disabled = (idx<PARTS.length) || !annoImg;
     document.getElementById('hotspots').value = JSON.stringify(hotspots);
   }
-  function drawMark(i,xp,yp){
-    const m=document.createElement('div'); m.className='mk'; m.style.left=xp+'%'; m.style.top=yp+'%';
-    m.innerHTML=(i+1)+'<small>'+PARTS[i].label+'</small>'; stage.appendChild(m);
-  }
-  function clearMarks(){ stage.querySelectorAll('.mk').forEach(e=>e.remove()); }
-  function onClick(e){
-    if(idx>=PARTS.length) return;
-    const r=annoImg.getBoundingClientRect();
-    const xp=+(((e.clientX-r.left)/r.width)*100).toFixed(1);
-    const yp=+(((e.clientY-r.top)/r.height)*100).toFixed(1);
-    hotspots[PARTS[idx].key]=[xp,yp]; drawMark(idx,xp,yp); idx++; stepUI();
-  }
-  function setAnnoImage(src, keepMarks){
-    const marks=[...stage.querySelectorAll('.mk')];
-    stage.innerHTML='';
-    annoImg=document.createElement('img'); annoImg.src=src; stage.appendChild(annoImg);
-    annoImg.addEventListener('click', onClick);
-    if(keepMarks) marks.forEach(m=>stage.appendChild(m));
-  }
-  function firstAvailableImage(){
-    // 优先新上传的预览，其次已有图
-    for(let i=0;i<6;i++){
-      const f=document.querySelector('.cfile[data-i="'+i+'"]');
-      if(f && f.files && f.files[0]) return URL.createObjectURL(f.files[0]);
-    }
-    for(let i=0;i<6;i++){
-      const keep=document.querySelector('input[name="color_keep_'+i+'"]');
-      if(keep && keep.value) return keep.value;
-    }
-    return null;
-  }
+  function drawMark(i,xp,yp){ const m=document.createElement('div'); m.className='mk'; m.style.left=xp+'%'; m.style.top=yp+'%'; m.innerHTML=(i+1)+'<small>'+PARTS[i].label+'</small>'; stage.appendChild(m); }
+  function onClick(e){ if(idx>=PARTS.length)return; const r=annoImg.getBoundingClientRect(); const xp=+(((e.clientX-r.left)/r.width)*100).toFixed(1); const yp=+(((e.clientY-r.top)/r.height)*100).toFixed(1); hotspots[PARTS[idx].key]=[xp,yp]; drawMark(idx,xp,yp); idx++; stepUI(); }
+  function firstImage(){ const t=rowsBox.querySelector('.cthumb[style*="display: "]'); const all=[...rowsBox.querySelectorAll('.cthumb')].filter(x=>x.src && x.style.display!=='none'); return all[0]?all[0].src:null; }
   function refreshAnno(){
-    const src=firstAvailableImage();
-    if(src){ setAnnoImage(src, true); }
-    else { stage.innerHTML='<div class="placeholder">选车、或传一张图，这里就能点了</div>'; annoImg=null; }
+    const src=firstImage();
+    if(src){ const marks=[...stage.querySelectorAll('.mk')]; stage.innerHTML=''; annoImg=document.createElement('img'); annoImg.src=src; stage.appendChild(annoImg); annoImg.addEventListener('click',onClick); marks.forEach(m=>stage.appendChild(m)); }
+    else { stage.innerHTML='<div class="placeholder">选车、或加一行传张图，这里就能点了</div>'; annoImg=null; }
     stepUI();
   }
-  // 载入某车已有资产到各颜色槽 + 热区
+
   function loadCar(car){
+    rowsBox.innerHTML=''; ridx=0; idx=0; hotspots={};
     const a=ASSETS[car];
-    // 清空槽
-    for(let i=0;i<6;i++){
-      document.querySelector('input[name="color_name_'+i+'"]').value='';
-      document.querySelector('input[name="color_hex_'+i+'"]').value='#cccccc';
-      document.querySelector('input[name="color_keep_'+i+'"]').value='';
-      const th=document.querySelector('.cthumb[data-i="'+i+'"]'); th.style.display='none'; th.src='';
-      document.querySelector('.cfile[data-i="'+i+'"]').value='';
-    }
-    idx=0; hotspots={};
-    if(a){
-      (a.colors||[]).slice(0,6).forEach((col,i)=>{
-        document.querySelector('input[name="color_name_'+i+'"]').value=col.name||'';
-        document.querySelector('input[name="color_hex_'+i+'"]').value=col.hex||'#cccccc';
-        document.querySelector('input[name="color_keep_'+i+'"]').value=col.image||'';
-        const th=document.querySelector('.cthumb[data-i="'+i+'"]'); if(col.image){ th.src=col.image; th.style.display=''; }
-      });
-      // 先放好图，再补已有热区
-      refreshAnno();
-      PARTS.forEach((p,i)=>{ if(a.hotspots && a.hotspots[p.key]){ hotspots[p.key]=a.hotspots[p.key]; drawMark(i,a.hotspots[p.key][0],a.hotspots[p.key][1]); idx=i+1; } });
-    } else {
-      refreshAnno();
-    }
-    stepUI();
+    if(a && a.colors && a.colors.length){ a.colors.forEach(col=>addRow({name:col.name,hex:col.hex,hex2:col.hex2,keep:col.image})); }
+    else { addRow(); }
+    // 图放好后补已有热区
+    setTimeout(()=>{ if(a){ PARTS.forEach((p,i)=>{ if(a.hotspots && a.hotspots[p.key]){ hotspots[p.key]=a.hotspots[p.key]; drawMark(i,a.hotspots[p.key][0],a.hotspots[p.key][1]); idx=i+1; } }); } refreshAnno(); }, 120);
   }
+
   document.getElementById('car').addEventListener('change', function(){ loadCar(this.value); });
-  document.querySelectorAll('.cfile').forEach(f=>f.addEventListener('change', function(){
-    const i=this.dataset.i, th=document.querySelector('.cthumb[data-i="'+i+'"]');
-    if(this.files[0]){ th.src=URL.createObjectURL(this.files[0]); th.style.display=''; document.querySelector('input[name="color_keep_'+i+'"]').value=''; }
-    refreshAnno();
-  }));
-  document.getElementById('reset').addEventListener('click', function(){ if(annoImg){ clearMarks(); idx=0; hotspots={}; stepUI(); }});
+  document.getElementById('addRow').addEventListener('click', ()=>addRow());
+  document.getElementById('batch').addEventListener('change', function(){
+    [...this.files].forEach(f=>{ const row=addRow(); const inp=row.querySelector('.cfile'); const dt=new DataTransfer(); dt.items.add(f); inp.files=dt.files; inp.dispatchEvent(new Event('change')); });
+    this.value='';
+  });
+  // 提交前：有图没名字的行提醒
+  document.getElementById('f').addEventListener('submit', function(e){
+    let bad=false;
+    rowsBox.querySelectorAll('.crow').forEach(r=>{ const nm=r.querySelector('.cname').value.trim(); const hasImg=r.querySelector('.cthumb').style.display!=='none'; if(hasImg && !nm) bad=true; });
+    if(bad){ e.preventDefault(); alert('有颜色图还没填颜色名，填一下再保存'); }
+  });
   window.addEventListener('load', ()=>loadCar(document.getElementById('car').value));
 </script>
 </body>

@@ -108,7 +108,7 @@ def admin():
     )
 
 
-MAX_COLORS = 6
+MAX_COLORS = 64  # 动态行数上限（扫描区间），实际有多少填多少
 
 
 def _save_upload(file, cutout=True):
@@ -141,16 +141,20 @@ def admin_save():
 
     cutout = request.form.get("cutout") == "on"  # 是否自动抠图
 
-    # 逐个颜色槽：新上传优先，其次沿用已有图；有名字+有图才算一条颜色
+    # 行数是动态的（可加可减），扫一段较大的区间，跳过空行
     colors = []
     for i in range(MAX_COLORS):
         name = request.form.get(f"color_name_{i}", "").strip()
         hexv = request.form.get(f"color_hex_{i}", "").strip() or "#cccccc"
+        hex2 = request.form.get(f"color_hex2_{i}", "").strip()  # 拼色第二色，可空
         keep = request.form.get(f"color_keep_{i}", "").strip()
         f = request.files.get(f"color_img_{i}")
         image = _save_upload(f, cutout) if (f and f.filename) else keep
         if name and image:
-            colors.append({"name": name, "hex": hexv, "image": image})
+            entry = {"name": name, "hex": hexv, "image": image}
+            if hex2:
+                entry["hex2"] = hex2
+            colors.append(entry)
 
     if not colors:
         abort(400, "至少要有一个颜色（填颜色名 + 传一张图）")

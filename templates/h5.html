@@ -84,7 +84,8 @@
   {% if asset and asset.colors and asset.colors|length > 1 %}
   <div class="colorbar">
     {% for col in asset.colors %}
-    <button type="button" class="cbtn {{ 'active' if loop.first else '' }}" style="background:{{ col.hex }}"
+    <button type="button" class="cbtn {{ 'active' if loop.first else '' }}"
+            style="{% if col.hex2 %}background:linear-gradient(135deg,{{ col.hex }} 0 50%,{{ col.hex2 }} 50% 100%){% else %}background:{{ col.hex }}{% endif %}"
             data-img="{{ col.image }}" title="{{ col.name }}"></button>
     {% endfor %}
   </div>
