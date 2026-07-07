@@ -14,14 +14,17 @@
     .steps{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
     .step{font-size:13px;padding:4px 10px;border-radius:20px;background:#eef1f8;color:#556}
     .step.done{background:#e8f3ee;color:#2e7d32} .step.cur{background:#ff4d4f;color:#fff}
+    .cstat{font-size:13px;padding:4px 12px;border-radius:20px;white-space:nowrap}
+    .cstat.done{background:#e8f3ee;color:#2e7d32} .cstat.todo{background:#fdeceb;color:#c0392b}
     .crow{display:flex;align-items:center;gap:10px;margin-bottom:10px;padding:8px;border:1px solid #eef1f8;border-radius:10px}
     .crow .cthumb{width:64px;height:44px;object-fit:contain;background:#f4f5f8;border-radius:6px;border:1px solid #e6e8ef;flex:0 0 auto}
     .crow .cfields{flex:1;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
     .crow .cname{flex:1;min-width:110px}
     .crow input[type=color]{width:40px;height:34px;padding:2px}
     .crow .twolab{font-size:12.5px;color:#556;display:flex;align-items:center;gap:4px;white-space:nowrap}
-    .crow .cfile{flex:1;min-width:120px}
     .crow .del{color:#c0392b;flex:0 0 auto}
+    .spin{display:inline-block;width:13px;height:13px;border:2px solid #cbd2e0;border-top-color:#c0392b;border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px;margin-right:5px}
+    @keyframes sp{to{transform:rotate(360deg)}}
     .toolrow{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin:10px 0 4px}
     .assets{width:100%;border-collapse:collapse;font-size:14px;margin-top:8px}
     .assets th,.assets td{border-bottom:1px solid #e6e8ef;padding:8px 10px;text-align:left}
@@ -30,19 +33,21 @@
 <body>
 <div class="wrap">
   <header class="topbar">
-    <h1>🔧 车图 / 换色 / 热区标注</h1>
+    <h1>车图 / 换色 / 热区标注</h1>
     <span class="role">内部工具</span>
-    <a class="ghost" href="{{ url_for('index') }}">← 回销售端</a>
+    <a class="ghost" href="{{ url_for('index') }}">← 返回销售端</a>
   </header>
   <div class="note">为车型上传多种颜色的官方图片（建议同一拍摄角度），并在任意一张图上标注热区（所有颜色共用一套）。保存后，客户端 H5 支持切换车身颜色并展示热区卖点。</div>
 
   <form class="card" method="post" action="{{ url_for('admin_save') }}" enctype="multipart/form-data" id="f">
     <div class="field" style="margin-bottom:14px">
       <label>车型</label>
-      <select name="car" id="car">
-        {% for c in cars %}{% set done = c.name in assets %}<option value="{{ c.name }}"{% if not done %} style="color:#c0392b"{% endif %}>{{ c.name }}（{{ c.level }}）{% if not done %} · 未标注{% endif %}</option>{% endfor %}
-      </select>
-      <p class="hint" style="margin-top:6px">红色为未标注车型。</p>
+      <div style="display:flex;align-items:center;gap:10px">
+        <select name="car" id="car" style="flex:1">
+          {% for c in cars %}{% set done = c.name in assets %}<option value="{{ c.name }}" data-done="{{ 1 if done else 0 }}">{{ '🟢' if done else '🔴' }} {{ c.name }}（{{ c.level }}）{{ ' · 已标注' if done else ' · 未标注' }}</option>{% endfor %}
+        </select>
+        <span id="carstat" class="cstat"></span>
+      </div>
     </div>
 
     <h2>一、车身颜色图片</h2>
@@ -52,6 +57,7 @@
     <div class="toolrow">
       <label class="ghost" style="cursor:pointer">批量导入图片<input type="file" id="batch" accept="image/*" multiple style="display:none"></label>
       <button type="button" class="ghost" id="addRow">添加颜色</button>
+      <span class="hint" id="batchprog" style="margin:0"></span>
       <span class="hint" style="margin:0">色块由图片自动取色，可手动调整；拼色车型勾选“拼色”以设置第二种颜色。</span>
     </div>
     <div id="rows"></div>
@@ -73,7 +79,7 @@
   <div class="card">
     <h2>已标注车型</h2>
     {% if assets %}
-    <table class="assets"><tr><th>车型</th><th>颜色数</th><th>红点</th></tr>
+    <table class="assets"><tr><th>车型</th><th>颜色数</th><th>热区</th></tr>
       {% for name, a in assets.items() %}<tr><td>{{ name }}</td><td>{{ a.colors|length }}</td><td>{{ a.hotspots|length }}/5</td></tr>{% endfor %}
     </table>
     {% else %}<p class="hint">暂无已标注车型。</p>{% endif %}
@@ -87,98 +93,94 @@
   const stage = document.getElementById('stage');
   const tip = document.getElementById('tip');
   const saveBtn = document.getElementById('save');
+  const batchProg = document.getElementById('batchprog');
   let ridx = 0, annoImg = null, idx = 0, hotspots = {};
+  const cutoutOn = () => document.querySelector('input[name=cutout]').checked;
 
-  // ---- 从图里取主色：车身中段带内取"出现最多的颜色"(众数)，不是求平均 ----
+  // 取主色：车身中段带内取"出现最多的颜色"(众数)
   function sampleColor(src, region, cb){
-    const im = new Image();
-    im.onload = function(){
+    const im=new Image();
+    im.onload=function(){
       try{
-        const W=120, H=Math.max(2, Math.round(120*im.height/im.width));
+        const W=120,H=Math.max(2,Math.round(120*im.height/im.width));
         const cv=document.createElement('canvas'); cv.width=W; cv.height=H;
         const cx=cv.getContext('2d'); cx.drawImage(im,0,0,W,H);
-        // region=center 取车身中段带；top 取车顶带（拼色第二色）
         const yT=Math.round(H*(region==='top'?0.10:0.42)), yB=Math.round(H*(region==='top'?0.30:0.70));
         const xL=Math.round(W*0.26), xR=Math.round(W*0.74);
-        const d=cx.getImageData(xL,yT,xR-xL,Math.max(1,yB-yT)).data;
-        const buckets={}, sum={};
-        for(let i=0;i<d.length;i+=4){
-          if(d[i+3]<128) continue;                 // 跳过透明
-          const r=d[i],g=d[i+1],b=d[i+2];
-          const key=(r>>5)+'-'+(g>>5)+'-'+(b>>5);  // 量化成 8×8×8 桶
-          buckets[key]=(buckets[key]||0)+1;
-          if(!sum[key]) sum[key]=[0,0,0,0];
-          sum[key][0]+=r; sum[key][1]+=g; sum[key][2]+=b; sum[key][3]++;
-        }
-        let best=null,bn=0;
-        for(const k in buckets){ if(buckets[k]>bn){ bn=buckets[k]; best=k; } }
-        if(!best){ cb(null); return; }
-        const s=sum[best];                          // 用众数桶里像素的真实均值，更准
-        const h='#'+[s[0]/s[3],s[1]/s[3],s[2]/s[3]].map(v=>Math.round(v).toString(16).padStart(2,'0')).join('');
-        cb(h);
+        const d=cx.getImageData(xL,yT,xR-xL,Math.max(1,yB-yT)).data, buckets={}, sum={};
+        for(let i=0;i<d.length;i+=4){ if(d[i+3]<128)continue; const r=d[i],g=d[i+1],b=d[i+2],k=(r>>5)+'-'+(g>>5)+'-'+(b>>5);
+          buckets[k]=(buckets[k]||0)+1; if(!sum[k])sum[k]=[0,0,0,0]; sum[k][0]+=r;sum[k][1]+=g;sum[k][2]+=b;sum[k][3]++; }
+        let best=null,bn=0; for(const k in buckets){ if(buckets[k]>bn){bn=buckets[k];best=k;} }
+        if(!best){cb(null);return;}
+        const s=sum[best]; cb('#'+[s[0]/s[3],s[1]/s[3],s[2]/s[3]].map(v=>Math.round(v).toString(16).padStart(2,'0')).join(''));
       }catch(e){ cb(null); }
     };
-    im.onerror=function(){ cb(null); };
-    im.src = src;
+    im.onerror=()=>cb(null); im.src=src;
   }
 
-  // ---- 一行颜色 ----
+  // 把某张图应用到一行（预览 + 取色 + 刷新标注图）
+  function applyImage(row, src){
+    const thumb=row.querySelector('.cthumb'), pick=row.querySelector('.pick'), hex=row.querySelector('.chex');
+    thumb.src=src; thumb.style.display=''; pick.innerHTML='更换图片';
+    sampleColor(src,'center',h=>{ if(h) hex.value=h; });
+    if(row.querySelector('.twotone').checked) sampleColor(src,'top',h=>{ if(h) row.querySelector('.chex2').value=h; });
+    refreshAnno();
+  }
+  // 选图 → 即时抠图 → 应用（返回 Promise，供批量顺序处理）
+  function cutoutInto(row, f){
+    const pick=row.querySelector('.pick'), keep=row.querySelector('input[type=hidden]'), file=row.querySelector('.cfile');
+    pick.disabled=true; pick.innerHTML='<span class="spin"></span>抠图中';
+    const fd=new FormData(); fd.append('image',f); fd.append('cutout', cutoutOn()?'on':'off');
+    return fetch('/admin/cutout',{method:'POST',body:fd}).then(r=>r.ok?r.json():Promise.reject())
+      .then(d=>{ pick.disabled=false; keep.value=d.path; file.value=''; applyImage(row,d.path); })
+      .catch(()=>{ pick.disabled=false; keep.value=''; applyImage(row, URL.createObjectURL(f)); });
+  }
+
+  // 一行颜色
   function addRow(prefill){
-    const i = ridx++;
-    const row = document.createElement('div'); row.className='crow'; row.dataset.i=i;
-    row.innerHTML =
+    const i=ridx++;
+    const row=document.createElement('div'); row.className='crow'; row.dataset.i=i;
+    row.innerHTML=
       '<img class="cthumb" style="display:none">'+
       '<div class="cfields">'+
         '<input name="color_name_'+i+'" placeholder="颜色名称" class="cname">'+
         '<input type="color" name="color_hex_'+i+'" value="#cccccc" class="chex" title="主色">'+
         '<label class="twolab"><input type="checkbox" class="twotone"> 拼色</label>'+
         '<input type="color" name="color_hex2_'+i+'" value="#888888" class="chex2" title="第二色" style="display:none" disabled>'+
-        '<button type="button" class="pick ghost">选图</button>'+
+        '<button type="button" class="pick ghost">选择图片</button>'+
         '<input type="file" name="color_img_'+i+'" accept="image/*" class="cfile" style="display:none">'+
         '<input type="hidden" name="color_keep_'+i+'" value="">'+
       '</div>'+
       '<button type="button" class="del ghost">删除</button>';
     rowsBox.appendChild(row);
-    const thumb=row.querySelector('.cthumb'), file=row.querySelector('.cfile'),
-          keep=row.querySelector('input[type=hidden]'), hex=row.querySelector('.chex'),
-          hex2=row.querySelector('.chex2'), two=row.querySelector('.twotone'),
-          name=row.querySelector('.cname'), pick=row.querySelector('.pick');
-    pick.addEventListener('click', ()=>file.click());
-    function useSrc(src){ thumb.src=src; thumb.style.display=''; pick.textContent='换图'; sampleColor(src,'center',h=>{ if(h) hex.value=h; }); refreshAnno(); }
+    const file=row.querySelector('.cfile'), keep=row.querySelector('input[type=hidden]'),
+          hex=row.querySelector('.chex'), hex2=row.querySelector('.chex2'),
+          two=row.querySelector('.twotone'), name=row.querySelector('.cname'), pick=row.querySelector('.pick');
     if(prefill){
       name.value=prefill.name||''; if(prefill.hex) hex.value=prefill.hex;
-      if(prefill.keep){ keep.value=prefill.keep; useSrc(prefill.keep); }
+      if(prefill.keep){ keep.value=prefill.keep; applyImage(row, prefill.keep); }
       if(prefill.hex2){ two.checked=true; hex2.disabled=false; hex2.style.display=''; hex2.value=prefill.hex2; }
     }
-    file.addEventListener('change', function(){
-      if(!this.files[0]) return;
-      const self=this, f=this.files[0];
-      pick.textContent='抠图中…'; pick.disabled=true;
-      const fd=new FormData(); fd.append('image', f);
-      fd.append('cutout', document.querySelector('input[name=cutout]').checked ? 'on':'off');
-      fetch('/admin/cutout', {method:'POST', body:fd})
-        .then(r=> r.ok ? r.json() : Promise.reject())
-        .then(d=>{ pick.disabled=false; keep.value=d.path; self.value=''; useSrc(d.path); })   // 用抠好的透明图预览+取色
-        .catch(()=>{ pick.disabled=false; keep.value=''; useSrc(URL.createObjectURL(f)); });    // 抠图失败退回原图(保存时服务器再抠)
-    });
+    pick.addEventListener('click', ()=>file.click());
+    file.addEventListener('change', function(){ if(this.files[0]) cutoutInto(row, this.files[0]); });
     two.addEventListener('change', function(){
       hex2.disabled=!this.checked; hex2.style.display=this.checked?'':'none';
-      if(this.checked && thumb.src) sampleColor(thumb.src,'top',h=>{ if(h) hex2.value=h; });
+      const t=row.querySelector('.cthumb'); if(this.checked && t.src) sampleColor(t.src,'top',h=>{ if(h) hex2.value=h; });
     });
-    row.querySelector('.del').addEventListener('click', function(){ row.remove(); refreshAnno(); });
+    row.querySelector('.del').addEventListener('click', ()=>{ row.remove(); refreshAnno(); });
     return row;
   }
 
-  // ---- 热区标注 ----
+  // 热区标注
   function stepUI(){
     document.querySelectorAll('.step').forEach((el,i)=>{ el.classList.remove('done','cur'); if(i<idx)el.classList.add('done'); else if(i===idx)el.classList.add('cur'); });
-    tip.textContent = idx<PARTS.length ? ('请点击图片标注：'+PARTS[idx].label) : '✅ 5 个红点都标好了';
+    tip.textContent = idx<PARTS.length ? ('请点击图片标注：'+PARTS[idx].label) : '五个热区已标注完成';
     saveBtn.disabled = (idx<PARTS.length) || !annoImg;
     document.getElementById('hotspots').value = JSON.stringify(hotspots);
   }
   function drawMark(i,xp,yp){ const m=document.createElement('div'); m.className='mk'; m.style.left=xp+'%'; m.style.top=yp+'%'; m.innerHTML=(i+1)+'<small>'+PARTS[i].label+'</small>'; stage.appendChild(m); }
   function onClick(e){ if(idx>=PARTS.length)return; const r=annoImg.getBoundingClientRect(); const xp=+(((e.clientX-r.left)/r.width)*100).toFixed(1); const yp=+(((e.clientY-r.top)/r.height)*100).toFixed(1); hotspots[PARTS[idx].key]=[xp,yp]; drawMark(idx,xp,yp); idx++; stepUI(); }
-  function firstImage(){ const t=rowsBox.querySelector('.cthumb[style*="display: "]'); const all=[...rowsBox.querySelectorAll('.cthumb')].filter(x=>x.src && x.style.display!=='none'); return all[0]?all[0].src:null; }
+  function firstImage(){ const all=[...rowsBox.querySelectorAll('.cthumb')].filter(x=>x.src && x.style.display!=='none'); return all[0]?all[0].src:null; }
   function refreshAnno(){
     const src=firstImage();
     if(src){ const marks=[...stage.querySelectorAll('.mk')]; stage.innerHTML=''; annoImg=document.createElement('img'); annoImg.src=src; stage.appendChild(annoImg); annoImg.addEventListener('click',onClick); marks.forEach(m=>stage.appendChild(m)); }
@@ -186,23 +188,29 @@
     stepUI();
   }
 
+  function setCarStat(){
+    const opt=document.getElementById('car').selectedOptions[0]; const s=document.getElementById('carstat');
+    const done = opt && opt.dataset.done==='1';
+    s.textContent = done?'已标注':'未标注'; s.className='cstat '+(done?'done':'todo');
+  }
   function loadCar(car){
     rowsBox.innerHTML=''; ridx=0; idx=0; hotspots={};
-    stage.querySelectorAll('.mk').forEach(m=>m.remove());  // 清掉上一辆车的旧红点，避免叠加
+    stage.querySelectorAll('.mk').forEach(m=>m.remove());
+    setCarStat();
     const a=ASSETS[car];
     if(a && a.colors && a.colors.length){ a.colors.forEach(col=>addRow({name:col.name,hex:col.hex,hex2:col.hex2,keep:col.image})); }
     else { addRow(); }
-    // 图放好后补已有热区
     setTimeout(()=>{ if(a){ PARTS.forEach((p,i)=>{ if(a.hotspots && a.hotspots[p.key]){ hotspots[p.key]=a.hotspots[p.key]; drawMark(i,a.hotspots[p.key][0],a.hotspots[p.key][1]); idx=i+1; } }); } refreshAnno(); }, 120);
   }
 
   document.getElementById('car').addEventListener('change', function(){ loadCar(this.value); });
   document.getElementById('addRow').addEventListener('click', ()=>addRow());
-  document.getElementById('batch').addEventListener('change', function(){
-    [...this.files].forEach(f=>{ const row=addRow(); const inp=row.querySelector('.cfile'); const dt=new DataTransfer(); dt.items.add(f); inp.files=dt.files; inp.dispatchEvent(new Event('change')); });
-    this.value='';
+  document.getElementById('batch').addEventListener('change', async function(){
+    const files=[...this.files]; this.value=''; let n=0;
+    for(const f of files){ n++; batchProg.textContent='正在抠图 '+n+'/'+files.length+'…'; const row=addRow(); await cutoutInto(row, f); }
+    batchProg.textContent='已导入 '+files.length+' 张，请填写颜色名称';
+    setTimeout(()=>batchProg.textContent='', 4000);
   });
-  // 提交前：有图没名字的行提醒
   document.getElementById('f').addEventListener('submit', function(e){
     let bad=false;
     rowsBox.querySelectorAll('.crow').forEach(r=>{ const nm=r.querySelector('.cname').value.trim(); const hasImg=r.querySelector('.cthumb').style.display!=='none'; if(hasImg && !nm) bad=true; });

@@ -28,10 +28,27 @@ def _get_session():
     return _session
 
 
+def _maybe_downscale(data: bytes, max_side: int = 1400) -> bytes:
+    """大图先缩到 max_side 再抠，显著提速；H5 显示够用。失败则原样返回。"""
+    try:
+        import io
+        from PIL import Image
+        im = Image.open(io.BytesIO(data))
+        if max(im.size) <= max_side:
+            return data
+        im.thumbnail((max_side, max_side))
+        buf = io.BytesIO()
+        im.save(buf, "PNG")
+        return buf.getvalue()
+    except Exception:
+        return data
+
+
 def remove_bg(data: bytes) -> tuple:
     """输入图片字节 → 返回 (处理后字节, 是否成功抠图)。成功时是透明 PNG。"""
     try:
         from rembg import remove
+        data = _maybe_downscale(data)
         kw = {"session": _get_session()}
         if os.getenv("REMBG_ALPHA", "0") == "1":
             kw.update(alpha_matting=True,
