@@ -149,7 +149,17 @@
       if(prefill.keep){ keep.value=prefill.keep; useSrc(prefill.keep); }
       if(prefill.hex2){ two.checked=true; hex2.disabled=false; hex2.style.display=''; hex2.value=prefill.hex2; }
     }
-    file.addEventListener('change', function(){ if(this.files[0]){ keep.value=''; useSrc(URL.createObjectURL(this.files[0])); } });
+    file.addEventListener('change', function(){
+      if(!this.files[0]) return;
+      const self=this, f=this.files[0];
+      pick.textContent='抠图中…'; pick.disabled=true;
+      const fd=new FormData(); fd.append('image', f);
+      fd.append('cutout', document.querySelector('input[name=cutout]').checked ? 'on':'off');
+      fetch('/admin/cutout', {method:'POST', body:fd})
+        .then(r=> r.ok ? r.json() : Promise.reject())
+        .then(d=>{ pick.disabled=false; keep.value=d.path; self.value=''; useSrc(d.path); })   // 用抠好的透明图预览+取色
+        .catch(()=>{ pick.disabled=false; keep.value=''; useSrc(URL.createObjectURL(f)); });    // 抠图失败退回原图(保存时服务器再抠)
+    });
     two.addEventListener('change', function(){
       hex2.disabled=!this.checked; hex2.style.display=this.checked?'':'none';
       if(this.checked && thumb.src) sampleColor(thumb.src,'top',h=>{ if(h) hex2.value=h; });

@@ -129,6 +129,18 @@ def _save_upload(file, cutout=True):
     return f"/static/cars/{fname}"
 
 
+@app.route("/admin/cutout", methods=["POST"])
+def admin_cutout():
+    """选图时即时抠图：收一张图 → 抠图存好 → 返回可访问路径。
+    这样前端能对『抠好的透明图』预览+取色，取色不再被背景污染。"""
+    f = request.files.get("image")
+    if not f or not f.filename:
+        abort(400, "没有图片")
+    cutout = request.form.get("cutout", "on") == "on"
+    path = _save_upload(f, cutout)
+    return {"path": path, "cutout": cutout and bg_remove.available()}
+
+
 @app.route("/admin/save", methods=["POST"])
 def admin_save():
     car = request.form.get("car", "").strip()
