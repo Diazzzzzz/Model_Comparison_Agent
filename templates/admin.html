@@ -164,6 +164,7 @@
   // 一行颜色
   function addRow(prefill){
     const i=ridx++;
+    const ph=rowsBox.querySelector('p.hint'); if(ph) ph.remove();   // 加行时清掉"还没有颜色"提示
     const row=document.createElement('div'); row.className='crow'; row.dataset.i=i;
     row.innerHTML=
       '<img class="cthumb" style="display:none">'+
@@ -224,7 +225,7 @@
     setCarStat();
     const a=ASSETS[car];
     if(a && a.colors && a.colors.length){ a.colors.forEach(col=>addRow({name:col.name,hex:col.hex,hex2:col.hex2,keep:col.image})); }
-    else { addRow(); }
+    else { rowsBox.innerHTML='<p class="hint" style="margin:0 0 8px">还没有颜色，点上方「导入图片」开始添加。</p>'; }
     setTimeout(()=>{ if(a){ PARTS.forEach((p,i)=>{ if(a.hotspots && a.hotspots[p.key]){ hotspots[p.key]=a.hotspots[p.key]; drawMark(i,a.hotspots[p.key][0],a.hotspots[p.key][1]); idx=i+1; } }); } refreshAnno(); }, 120);
   }
 
