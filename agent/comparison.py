@@ -120,12 +120,12 @@ def extract_tags_from_context(transcript: str) -> dict:
     if Config.text_mock():
         return {
             "name": "（演示）从对话提炼的客户",
-            "intent_car": "长城哈弗H6",
-            "budget": "15万内，月供3000内",
+            "intent_car": "本田CR-V",
+            "budget": "20万内，月供4000内",
             "usage": "通勤+带娃出游",
             "family": "三口之家，2岁小孩",
-            "care_most": "安全、空间、性价比",
-            "worry": "怕国产不保值、小毛病多",
+            "care_most": "空间、安全、保值",
+            "worry": "油耗、保值不如丰田",
             "heat": "高",
             "rival_car": "丰田RAV4荣放",
         }

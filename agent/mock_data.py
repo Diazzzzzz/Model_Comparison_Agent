@@ -3,51 +3,97 @@
 没配 DeepSeek key 时用这里：直接拿【已挑好并锁定参数值的维度】拼出一份像样的对比，
 让整个流程在零 key 情况下也能完整跑通、可演示。
 填了 key 后就走真模型（见 comparison.py），这里不再参与。
+
+占优判断：数值型维度按【真实参数】比大小定谁占优（换数据也不会说错）；
+非数值维度用维度字典里的默认结论兜底。
 """
+import re
 from agent.prompts import HOTSPOT_PARTS
+
+# 数值型维度：越大越好 / 越小越好（用于按真实数值判占优）
+_HIGHER_BETTER = {"轴距", "后备箱", "动力"}
+_LOWER_BETTER = {"指导价", "参考月供", "能耗油耗", "保养成本"}
+
+
+def _num(s):
+    m = re.search(r"\d+(?:\.\d+)?", s or "")
+    return float(m.group()) if m else None
+
+
+def _smart_winner(spec, our_v, rival_v, fallback):
+    """数值型维度按真实数值比；比不了就用维度字典的默认结论。差距 <1% 视为相当(tie)。"""
+    o, r = _num(our_v), _num(rival_v)
+    if o is not None and r is not None and (spec in _HIGHER_BETTER or spec in _LOWER_BETTER):
+        hi = max(abs(o), abs(r)) or 1
+        if abs(o - r) / hi < 0.01:          # 差距小于 1%，算相当
+            return "tie"
+        better_when_higher = spec in _HIGHER_BETTER
+        return "ours" if (o > r) == better_when_higher else "rival"
+    return fallback
+
+
+# 维度与"客户在意点/顾虑"的关联词：用于优先保留客户已经担心的那条短板（正好用找补正面回应）
+_SPEC_HINT = {
+    "指导价": ["价格", "预算", "便宜", "贵", "性价比"],
+    "参考月供": ["月供", "预算", "压力"],
+    "能耗油耗": ["油耗", "能耗", "省", "用车成本"],
+    "后备箱": ["空间", "后备箱", "装", "大"],
+    "轴距": ["空间", "后排", "乘坐", "腿"],
+    "保养成本": ["保养", "用车成本"],
+    "品牌保值": ["保值", "品牌", "二手"],
+}
+
+
+def _hits(text, spec):
+    return any(kw in text for kw in _SPEC_HINT.get(spec, []))
 
 
 def build_mock_result(customer, our_car, rival_car, dims):
-    """dims: data/dimensions.select_dimensions() 挑好的维度，
-    每条已带锁定的 our_value / rival_value / mock（默认结论）。"""
+    """dims: data/dimensions.select_dimensions() 挑好的维度。
+
+    立场：倾向【意向车（我方）】——参数事实不造假（数字锁），但只诚实让最多 2 条短板，
+    且优先留客户已经在担心的那条（正好用找补正面回应）；其余短板不上桌，优势排在前面。
+    """
     our_specs = our_car["specs"]
-
-    dimensions = []
-    for d in dims:
-        dimensions.append({
-            "name": d["label"],
-            "our_value": d["our_value"],
-            "rival_value": d["rival_value"],
-            "winner": d.get("mock", "tie"),
-            "comment": _mock_comment(d["spec"], customer),
-        })
-
     care = customer.get("care_most", "").strip() or "性价比"
     worry = customer.get("worry", "").strip()
-    talk = (
-        f"{customer.get('name','您')}，我特别理解您最看重{care}。"
-        f"就拿{our_car['name']}和{rival_car['name']}比：同样这个价位，我们月供更轻松、"
-        f"空间和安全用料都实打实占优。"
-    )
-    if worry:
-        talk += f"您担心的『{worry}』，其实正是我们的强项——" \
-                f"{our_car['name']}给的是{our_specs.get('质保','长质保')}，用料上{our_specs.get('车身用钢','高强度车身')}，这些都是白纸黑字写进合同的。"
-    talk += "我建议您今天就试驾感受一下，很多客户一开就有数了。"
+    care_worry = care + " " + worry
 
-    # 演示：补一条我方劣势项，展示"找补"能力——销售既要知道弱点，也要知道怎么化解
-    dimensions.append({
-        "name": "品牌 / 保值率",
-        "our_value": "国产品牌，保值率近年快速提升",
-        "rival_value": f"{rival_car['brand']}合资品牌，二手保值率偏高",
+    rows = []
+    for d in dims:
+        winner = _smart_winner(d["spec"], d["our_value"], d["rival_value"], d.get("mock", "tie"))
+        rows.append({
+            "name": d["label"], "spec": d["spec"],
+            "our_value": d["our_value"], "rival_value": d["rival_value"],
+            "winner": winner,
+            "comment": _mock_comment(d["spec"], winner, rival_car),
+        })
+    # 品牌/保值率：一条定性的诚实短板候选（本田 vs 丰田常见顾虑）
+    rows.append({
+        "name": "品牌 / 保值率", "spec": "品牌保值",
+        "our_value": f"{our_car['brand']}，保值率稳健、口碑好",
+        "rival_value": f"{rival_car['brand']}，二手保值率略高",
         "winner": "rival",
-        "comment": (
-            f"【找补】客户就担心这个（{worry or '保值/品牌'}）。这么说："
-            f"合资保值确实略高，但这两年差距明显在缩小；而且我们省下的差价 + 更长质保，"
-            f"几年下来实际持有成本更低，真不吃亏。"
-        ),
+        "comment": (f"【找补】{rival_car['brand']}保值是略高一点，但差距不大；"
+                    f"{our_car['name']}赢在动力、空间和驾驶质感，日常体验更好，综合算不吃亏。"),
     })
 
-    hotspots = _mock_hotspots(our_car)
+    wins = [r for r in rows if r["winner"] == "ours"]
+    ties = [r for r in rows if r["winner"] == "tie"]
+    losses = [r for r in rows if r["winner"] == "rival"]
+    # 倾向意向车：短板最多上桌 2 条，优先留客户已经在担心的那条
+    losses.sort(key=lambda r: 0 if _hits(care_worry, r["spec"]) else 1)
+    dimensions = wins + ties + losses[:2]     # 先亮优势，短板压到最后且只留 1~2 条
+
+    talk = (
+        f"{customer.get('name','您')}，我特别理解您最看重{care}。就拿{our_car['name']}和{rival_car['name']}比："
+        f"{our_car['name']}在空间、动力和用料上更足，开着也更有意思，这几点正是您日常最有感的地方。"
+    )
+    if worry:
+        talk += (f"您担心的『{worry}』，我跟您交个底：这方面对方是有一点优势，但差距不大；"
+                 f"而 {our_car['name']} 给的是{our_specs.get('质保','长质保')}、用料上{our_specs.get('车身用钢','高强度车身')}，"
+                 f"这些实打实的东西更顶用。")
+    talk += "我建议您今天就试驾感受一下，很多客户一开就有数了。"
 
     return {
         "summary": f"同价位更懂{care}的那台",
@@ -56,38 +102,56 @@ def build_mock_result(customer, our_car, rival_car, dims):
         "h5": {
             "scene_title": f"为{care}而来 · {our_car['name']}",
             "scene_prompt": _scene_prompt(our_car),
-            "hotspots": hotspots,
+            "hotspots": _mock_hotspots(our_car),
         },
     }
 
 
 def _scene_prompt(our_car):
-    """按车型给一个具体、出片的场景（越野车走户外硬核，家用车走风景公路）。"""
+    """按车型给一个具体、出片的场景（SUV 走户外，轿车走都市/公路）。"""
     level = our_car.get("level", "")
-    if "越野" in level:
-        return ("a rugged off-road gravel mountain trail at golden hour, "
-                "dramatic cliffs and pine forest, adventurous outdoor mood")
-    return ("an open scenic coastal highway winding through green mountains at sunset, "
-            "warm cinematic light, clean empty road")
+    if "越野" in level or "SUV" in level:
+        return ("a scenic mountain road trip at golden hour, green forest and open sky, "
+                "warm cinematic light, family outdoor mood, clean empty road")
+    return ("a stylish city night street with light trails and neon reflections, "
+            "dynamic youthful mood, cinematic lighting, clean empty road")
 
 
-def _mock_comment(key, customer):
-    m = {
-        "指导价": "价格更亲民，同样的钱配置更高",
-        "参考月供": "月供更低，每月少还几百，压力小一圈",
-        "安全": "全系标配，带娃出行这一条最实在",
-        "能耗油耗": "合资是省一点点，但差距很小；我们月供更低、保养更省，一年综合下来更划算，真不吃亏",
-        "售后服务": "服务网络跟着市场同步建，坏了有人管、修得起，出海最怕的就是没人管",
-        "保养成本": "保养便宜、周期长，跑得多也养得起",
-        "后备箱": "后排放倒能塞下婴儿车/露营装备，出行不用取舍",
-        "车身用钢": "关键部位用料足，碰撞时更护人",
-        "智能座舱": "大屏好用，导航语音一句话搞定",
-        "质保": "质保更长，后期省心又省钱",
-        "轴距": "轴距更长，后排腿部空间更宽敞",
-        "动力": "动力更足，超车并线更从容",
-        "底盘/悬架": "底盘扎实，长途和烂路都更稳",
-    }
-    return m.get(key, "这一项对您的用车场景更合适")
+# 我方占优时的正向点评
+_WIN = {
+    "指导价": "价格更亲民，同样的钱配置更高",
+    "参考月供": "月供更低，每月少还几百，压力小一圈",
+    "安全": "全系标配，带娃出行这一条最实在",
+    "能耗油耗": "油耗更低，一年下来省不少油钱",
+    "售后服务": "服务网络密、坏了有人管、修得起，省心",
+    "保养成本": "保养便宜、周期长，跑得多也养得起",
+    "后备箱": "后排放倒能塞下婴儿车/露营装备，出行不用取舍",
+    "车身用钢": "关键部位用料足，碰撞时更护人",
+    "智能座舱": "大屏好用，导航语音一句话搞定",
+    "质保": "质保更长，后期省心又省钱",
+    "轴距": "轴距更长，后排腿部空间更宽敞",
+    "动力": "动力更足，超车并线更从容",
+    "底盘/悬架": "底盘扎实，长途和烂路都更稳",
+}
+
+# 我方劣势时给销售的"找补"话术
+_LOSE = {
+    "指导价": "【找补】价格是略高一点，但配置、用料和空间给得更足，落地算下来不虚",
+    "参考月供": "【找补】月供略高一点点，差不了多少，但车更值、开着更好，长期更划算",
+    "能耗油耗": "【找补】对方这项确实略省，但差距很小；我们保养更便宜、动力空间更好，综合用车成本不吃亏",
+    "后备箱": "【找补】后备箱略小一点，但日常够用，后排放倒照样能装",
+    "轴距": "【找补】轴距略短一点，实际乘坐空间不吃亏",
+    "动力": "【找补】这项参数对方略高，但我们调校更好开，日常更够用",
+    "保养成本": "【找补】保养略贵一点，但网点多、省心",
+}
+
+
+def _mock_comment(spec, winner, rival_car):
+    if winner == "ours":
+        return _WIN.get(spec, "这一项对您的用车场景更合适")
+    if winner == "rival":
+        return _LOSE.get(spec, f"【找补】这项{rival_car['brand']}略强，但差距不大，我方在更关键的点上占优，综合更划算")
+    return "两者接近，看个人偏好"
 
 
 def _mock_hotspots(our_car):
@@ -103,7 +167,7 @@ def _mock_hotspots(our_car):
         "roof": ("空间更能装", f"后备箱{specs.get('后备箱', '超大')}｜轴距{specs.get('轴距', '宽敞')}",
                  "周五一下班，后备箱塞进帐篷、天幕、孩子的滑板车，一家人往山里开去。后视镜里城市越来越远，前面是一整个周末的自由。"),
         "cabin": ("座舱更聪明", f"{specs.get('智能座舱', '智能大屏')}｜{specs.get('质保', '长质保')}",
-                  "上车一句话——“导航去外婆家、空调26度、来点音乐”，车全办妥了。你双手握着方向盘专心开，副驾和后排聊着天，这一路你只管享受。"),
+                  "上车一句话——“导航去公司、空调26度、来点音乐”，车全办妥了。你双手握着方向盘专心开，副驾和后排聊着天，这一路你只管享受。"),
     }
     out = []
     for p in HOTSPOT_PARTS:
