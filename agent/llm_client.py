@@ -25,7 +25,7 @@ def chat(system: str, user: str, timeout: int = 60) -> str:
             {"role": "system", "content": system},
             {"role": "user", "content": user},
         ],
-        "temperature": 0.7,
+        "temperature": 0.4,  # 销售工具求稳，降低发散/编造倾向
         "response_format": {"type": "json_object"},
     }
     resp = requests.post(url, headers=headers, json=payload, timeout=timeout)

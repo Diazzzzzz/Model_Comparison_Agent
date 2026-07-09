@@ -1,29 +1,25 @@
 """演示模式(MOCK)下的输出生成。
 
-没配 DeepSeek key 时用这里：直接拿真实车型参数，按规则拼出一份像样的对比，
-让整个流程在【零 key】情况下也能完整跑通、可演示。
+没配 DeepSeek key 时用这里：直接拿【已挑好并锁定参数值的维度】拼出一份像样的对比，
+让整个流程在零 key 情况下也能完整跑通、可演示。
 填了 key 后就走真模型（见 comparison.py），这里不再参与。
 """
 from agent.prompts import HOTSPOT_PARTS
 
-# 演示模式下，认为我方在这些维度占优（销售工具，突出本车优势）
-_OUR_WIN_KEYS = {"参考月供", "后备箱", "安全", "车身用钢", "智能座舱", "质保", "轴距"}
 
-
-def build_mock_result(customer, our_car, rival_car):
+def build_mock_result(customer, our_car, rival_car, dims):
+    """dims: data/dimensions.select_dimensions() 挑好的维度，
+    每条已带锁定的 our_value / rival_value / mock（默认结论）。"""
     our_specs = our_car["specs"]
-    rival_specs = rival_car["specs"]
 
     dimensions = []
-    for key, our_val in our_specs.items():
-        rival_val = rival_specs.get(key, "—")
-        winner = "ours" if key in _OUR_WIN_KEYS else "tie"
+    for d in dims:
         dimensions.append({
-            "name": key,
-            "our_value": our_val,
-            "rival_value": rival_val,
-            "winner": winner,
-            "comment": _mock_comment(key, customer),
+            "name": d["label"],
+            "our_value": d["our_value"],
+            "rival_value": d["rival_value"],
+            "winner": d.get("mock", "tie"),
+            "comment": _mock_comment(d["spec"], customer),
         })
 
     care = customer.get("care_most", "").strip() or "性价比"
@@ -38,7 +34,7 @@ def build_mock_result(customer, our_car, rival_car):
                 f"{our_car['name']}给的是{our_specs.get('质保','长质保')}，用料上{our_specs.get('车身用钢','高强度车身')}，这些都是白纸黑字写进合同的。"
     talk += "我建议您今天就试驾感受一下，很多客户一开就有数了。"
 
-    # 演示：加一条我方劣势项，展示"找补"能力——销售既要知道弱点，也要知道怎么化解
+    # 演示：补一条我方劣势项，展示"找补"能力——销售既要知道弱点，也要知道怎么化解
     dimensions.append({
         "name": "品牌 / 保值率",
         "our_value": "国产品牌，保值率近年快速提升",
@@ -77,15 +73,18 @@ def _scene_prompt(our_car):
 
 def _mock_comment(key, customer):
     m = {
+        "指导价": "价格更亲民，同样的钱配置更高",
         "参考月供": "月供更低，每月少还几百，压力小一圈",
-        "后备箱": "后排放倒能塞下婴儿车/露营装备，出行不用取舍",
         "安全": "全系标配，带娃出行这一条最实在",
+        "能耗油耗": "合资是省一点点，但差距很小；我们月供更低、保养更省，一年综合下来更划算，真不吃亏",
+        "售后服务": "服务网络跟着市场同步建，坏了有人管、修得起，出海最怕的就是没人管",
+        "保养成本": "保养便宜、周期长，跑得多也养得起",
+        "后备箱": "后排放倒能塞下婴儿车/露营装备，出行不用取舍",
         "车身用钢": "关键部位用料足，碰撞时更护人",
         "智能座舱": "大屏好用，导航语音一句话搞定",
         "质保": "质保更长，后期省心又省钱",
         "轴距": "轴距更长，后排腿部空间更宽敞",
-        "动力": "动力够用，超车并线更从容",
-        "指导价": "价格更亲民，同样的钱配置更高",
+        "动力": "动力更足，超车并线更从容",
         "底盘/悬架": "底盘扎实，长途和烂路都更稳",
     }
     return m.get(key, "这一项对您的用车场景更合适")
