@@ -118,15 +118,7 @@ def extract_tags_from_context(transcript: str) -> dict:
     """从对话上下文提炼客户标签（对应输入3）。没 key 时给个演示结果。"""
     from agent.prompts import EXTRACT_TAGS_SYSTEM
     if Config.text_mock():
-        return {
-            "name": "（演示）从对话提炼的客户",
-            "intent_car": "本田CR-V",
-            "budget": "20万内，月供4000内",
-            "usage": "通勤+带娃出游",
-            "family": "三口之家，2岁小孩",
-            "care_most": "空间、安全、保值",
-            "worry": "油耗、保值不如丰田",
-            "heat": "高",
-            "rival_car": "丰田RAV4荣放",
-        }
+        # 纯净版：无内置样例；返回空客户模板（接入真模型后由 ASR + LLM 提炼）
+        return {"name": "", "intent_car": "", "budget": "", "usage": "", "family": "",
+                "care_most": "", "worry": "", "heat": "", "rival_car": ""}
     return llm_client.chat_json(EXTRACT_TAGS_SYSTEM, transcript)

@@ -23,18 +23,19 @@ RESULTS = {}
 
 
 def _match_car(name, cars):
-    """把（可能不精确的）车名匹配到车库里的正式名。匹配不到返回原值。"""
+    """把（可能不精确的）车名匹配到车库里的正式名。匹配不到返回原值。
+    与品牌无关：去品牌词时用每辆车自己的 brand 字段，不写死任何品牌。"""
     name = (name or "").strip()
     names = [c["name"] for c in cars]
     if name in names:
         return name
-    for n in names:                       # 互相包含：坦克300 ↔ 长城坦克300
+    for n in names:                       # 互相包含：核心型号名 ↔ 含品牌全名
         if n and (n in name or name in n):
             return n
-    for n in names:                       # 去掉品牌词再比：H6 / 途观 等核心词命中
-        core = n.replace("长城", "").replace("大众", "").replace("丰田", "")
-        if core and core in name:
-            return n
+    for c in cars:                        # 去掉该车自己的品牌词，再按核心型号名比
+        core = c["name"].replace(c.get("brand", ""), "").strip()
+        if core and (core in name or name in core):
+            return c["name"]
     return name
 
 
@@ -62,7 +63,7 @@ def index():
             dialogue = mock_contexts.parse_dialogue(ctx["transcript"])
             note = f"已从对话《{ctx['title']}》自动提炼客户标签，可再手动修改"
 
-    # 把车名规范化到车库正式名（模型可能抽出"坦克300"，下拉框是"长城坦克300"）
+    # 把车名规范化到车库正式名（模型可能抽出简称，下拉框是含品牌的全名）
     customer = dict(customer)
     customer["intent_car"] = _match_car(customer.get("intent_car"), car_library.our_cars())
     customer["rival_car"] = _match_car(customer.get("rival_car"), car_library.rival_cars())

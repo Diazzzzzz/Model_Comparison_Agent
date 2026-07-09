@@ -51,10 +51,10 @@ def _hits(text, spec):
 def build_mock_result(customer, our_car, rival_car, dims):
     """dims: data/dimensions.select_dimensions() 挑好的维度。
 
-    立场：倾向【意向车（我方）】——参数事实不造假（数字锁），但只诚实让最多 2 条短板，
-    且优先留客户已经在担心的那条（正好用找补正面回应）；其余短板不上桌，优势排在前面。
+    立场：倾向【意向车（我方）】——参数事实不造假（数字锁），只诚实让最多 2 条短板，
+    且优先留客户已经在担心的那条（正好用找补正面回应），其余短板不上桌、优势排在前面。
+    完全数据驱动、与品牌无关：换任何车企的数据都适用，不预设我方在哪些维度占优。
     """
-    our_specs = our_car["specs"]
     care = customer.get("care_most", "").strip() or "性价比"
     worry = customer.get("worry", "").strip()
     care_worry = care + " " + worry
@@ -68,15 +68,6 @@ def build_mock_result(customer, our_car, rival_car, dims):
             "winner": winner,
             "comment": _mock_comment(d["spec"], winner, rival_car),
         })
-    # 品牌/保值率：一条定性的诚实短板候选（本田 vs 丰田常见顾虑）
-    rows.append({
-        "name": "品牌 / 保值率", "spec": "品牌保值",
-        "our_value": f"{our_car['brand']}，保值率稳健、口碑好",
-        "rival_value": f"{rival_car['brand']}，二手保值率略高",
-        "winner": "rival",
-        "comment": (f"【找补】{rival_car['brand']}保值是略高一点，但差距不大；"
-                    f"{our_car['name']}赢在动力、空间和驾驶质感，日常体验更好，综合算不吃亏。"),
-    })
 
     wins = [r for r in rows if r["winner"] == "ours"]
     ties = [r for r in rows if r["winner"] == "tie"]
@@ -85,18 +76,19 @@ def build_mock_result(customer, our_car, rival_car, dims):
     losses.sort(key=lambda r: 0 if _hits(care_worry, r["spec"]) else 1)
     dimensions = wins + ties + losses[:2]     # 先亮优势，短板压到最后且只留 1~2 条
 
+    # 话术从"实际占优的维度"动态生成——不预设我方赢在哪几项
+    adv = "、".join(r["name"] for r in wins[:3]) or "多个关键方面"
     talk = (
-        f"{customer.get('name','您')}，我特别理解您最看重{care}。就拿{our_car['name']}和{rival_car['name']}比："
-        f"{our_car['name']}在空间、动力和用料上更足，开着也更有意思，这几点正是您日常最有感的地方。"
+        f"{customer.get('name','您')}，我特别理解您最看重{care}。{our_car['name']} 和 {rival_car['name']} 比，"
+        f"{our_car['name']} 在 {adv} 这些方面更有优势，正是您日常最有感的地方。"
     )
     if worry:
-        talk += (f"您担心的『{worry}』，我跟您交个底：这方面对方是有一点优势，但差距不大；"
-                 f"而 {our_car['name']} 给的是{our_specs.get('质保','长质保')}、用料上{our_specs.get('车身用钢','高强度车身')}，"
-                 f"这些实打实的东西更顶用。")
+        talk += (f"您担心的『{worry}』，我跟您交个底：这方面对方或许略强，但差距不大；"
+                 f"{our_car['name']} 在更关键的地方更值、综合体验更好。")
     talk += "我建议您今天就试驾感受一下，很多客户一开就有数了。"
 
     return {
-        "summary": f"同价位更懂{care}的那台",
+        "summary": f"更懂{care}的那台",
         "dimensions": dimensions,
         "talk_track": talk,
         "h5": {
@@ -138,7 +130,7 @@ _WIN = {
 _LOSE = {
     "指导价": "【找补】价格是略高一点，但配置、用料和空间给得更足，落地算下来不虚",
     "参考月供": "【找补】月供略高一点点，差不了多少，但车更值、开着更好，长期更划算",
-    "能耗油耗": "【找补】对方这项确实略省，但差距很小；我们保养更便宜、动力空间更好，综合用车成本不吃亏",
+    "能耗油耗": "【找补】对方这项确实略省，但差距很小，综合用车成本不吃亏",
     "后备箱": "【找补】后备箱略小一点，但日常够用，后排放倒照样能装",
     "轴距": "【找补】轴距略短一点，实际乘坐空间不吃亏",
     "动力": "【找补】这项参数对方略高，但我们调校更好开，日常更够用",
