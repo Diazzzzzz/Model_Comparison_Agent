@@ -7,7 +7,7 @@
 import os
 import json
 import uuid
-from flask import Flask, render_template, request, redirect, url_for, abort
+from flask import Flask, render_template, request, redirect, url_for, abort, jsonify
 
 from config import Config
 from data import car_library, customer_tags, mock_contexts, car_assets
@@ -115,6 +115,35 @@ def h5(rid):
     # 若这辆车在管理页标注过真图+热区，就用它；否则 H5 回退到通用剪影
     asset = car_assets.get_asset(data["our_car"]["name"])
     return render_template("h5.html", r=data, rid=rid, asset=asset)
+
+
+# ======== 对外 API「口子」：给 Sales Agent 的『对比竞品』节点调用 ========
+
+@app.route("/api/compare", methods=["POST"])
+def api_compare():
+    """【对外口子】Sales Agent 的『对比竞品』节点调这个。
+    入参 JSON: {"customer": {...客户标签...}, "our_car": "长城哈弗H6", "rival_car": "丰田RAV4荣放"}
+    出参 JSON: {summary, dimensions[], talk_track, h5{...}, our_car, rival_car, customer, _mode, _warn?}
+    与进程内直接调用 comparison.generate_comparison(...) 返回结构完全一致。"""
+    payload = request.get_json(silent=True) or {}
+    customer = payload.get("customer") or {}
+    our_car = (payload.get("our_car") or "").strip()
+    rival_car = (payload.get("rival_car") or "").strip()
+
+    if not car_library.get_car(our_car) or not car_library.get_car(rival_car):
+        return jsonify({
+            "error": "our_car / rival_car 必须是车库中的有效车型",
+            "valid_our": [c["name"] for c in car_library.our_cars()],
+            "valid_rival": [c["name"] for c in car_library.rival_cars()],
+        }), 400
+    if our_car == rival_car:
+        return jsonify({"error": "our_car 和 rival_car 不能是同一款"}), 400
+
+    try:
+        result = comparison.generate_comparison(customer, our_car, rival_car)
+    except Exception as exc:  # 兜底：把错误以 JSON 返回，方便调用方排查
+        return jsonify({"error": str(exc)}), 500
+    return jsonify(result)
 
 
 # ======== 内部管理页：车图 + 热区标注（非销售页，将来迁入后台系统）========
