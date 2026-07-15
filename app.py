@@ -234,4 +234,5 @@ def admin_save():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    # 端口可用环境变量覆盖：PORT=5002 python app.py
+    app.run(host="0.0.0.0", port=int(os.getenv("PORT", "5000")), debug=True)
